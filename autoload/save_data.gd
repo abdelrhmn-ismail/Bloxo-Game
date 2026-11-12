@@ -1,5 +1,6 @@
 extends Node
-## Saves the best score and settings to the phone (user://save.json).
+## Saves the best score, settings and the unfinished game to the phone
+## (user://save.json).
 
 const PATH := "user://save.json"
 
@@ -7,10 +8,16 @@ var best_score := 0
 var sound_on := true
 var music_on := true
 var vibration_on := true
+## Snapshot from GameState.to_dict(), or {} when there is no game to resume.
+var saved_game := {}
 
 
 func _ready() -> void:
 	load_data()
+
+
+func has_saved_game() -> bool:
+	return not saved_game.is_empty()
 
 
 func load_data() -> void:
@@ -26,6 +33,8 @@ func load_data() -> void:
 	sound_on = bool(data.get("sound_on", true))
 	music_on = bool(data.get("music_on", true))
 	vibration_on = bool(data.get("vibration_on", true))
+	var game = data.get("saved_game", {})
+	saved_game = game if typeof(game) == TYPE_DICTIONARY else {}
 
 
 func write() -> void:
@@ -38,4 +47,5 @@ func write() -> void:
 		"sound_on": sound_on,
 		"music_on": music_on,
 		"vibration_on": vibration_on,
+		"saved_game": saved_game,
 	}))

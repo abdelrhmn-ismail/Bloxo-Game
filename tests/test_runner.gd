@@ -17,6 +17,8 @@ func _init() -> void:
 	test_combo_resets_after_three_moves()
 	test_game_over_detection()
 	test_tray_always_has_a_fitting_piece()
+	test_save_and_restore_game()
+	test_restore_rejects_broken_data()
 	print("\n%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -149,6 +151,31 @@ func test_game_over_detection() -> void:
 	var r := gs.try_place(0, 1, 0)
 	check(r["ok"], "dot placed")
 	check(r["game_over"], "game over: the 2-long piece cannot fit")
+
+
+func test_save_and_restore_game() -> void:
+	var gs := GameState.new(99)
+	gs.board.place(Shapes.parse("XX\nXX"), 2, 3, 5)
+	gs.score = 1234
+	gs.streak = 2
+	gs.tray[1] = null
+	# Go through JSON like the real save file does.
+	var data = JSON.parse_string(JSON.stringify(gs.to_dict()))
+	var loaded := GameState.new(1)
+	check(loaded.from_dict(data), "restore succeeds")
+	check(loaded.board.cells == gs.board.cells, "board restored")
+	check(loaded.score == 1234 and loaded.streak == 2, "score and streak restored")
+	check(loaded.tray[1] == null, "used tray slot stays empty")
+	check(loaded.tray[0]["shape"] == gs.tray[0]["shape"], "tray shape restored")
+	check(loaded.tray[0]["color"] == gs.tray[0]["color"], "tray color restored")
+
+
+func test_restore_rejects_broken_data() -> void:
+	var gs := GameState.new(5)
+	var before := gs.board.cells.duplicate()
+	check(not gs.from_dict({}), "empty data rejected")
+	check(not gs.from_dict({"cells": [1, 2], "tray": [null, null, null]}), "short board rejected")
+	check(gs.board.cells == before, "board untouched after rejected restore")
 
 
 func test_tray_always_has_a_fitting_piece() -> void:

@@ -53,6 +53,61 @@ func has_any_move() -> bool:
 	return false
 
 
+## Snapshot of the game as plain data (for saving to JSON).
+func to_dict() -> Dictionary:
+	var tray_data := []
+	for piece in tray:
+		if piece == null:
+			tray_data.append(null)
+			continue
+		var cells := []
+		for p in piece["shape"]:
+			cells.append([p.x, p.y])
+		tray_data.append({"shape": cells, "color": piece["color"]})
+	return {
+		"cells": Array(board.cells),
+		"tray": tray_data,
+		"score": score,
+		"streak": streak,
+		"moves_since_clear": moves_since_clear,
+	}
+
+
+## Restores a snapshot made by to_dict(). Returns false if the data is
+## broken (then the state is left as a fresh game).
+func from_dict(data: Dictionary) -> bool:
+	var cells = data.get("cells")
+	var tray_data = data.get("tray")
+	if typeof(cells) != TYPE_ARRAY or cells.size() != Board.SIZE * Board.SIZE:
+		return false
+	if typeof(tray_data) != TYPE_ARRAY or tray_data.size() != TRAY_SIZE:
+		return false
+
+	var new_tray := []
+	for item in tray_data:
+		if item == null:
+			new_tray.append(null)
+			continue
+		if typeof(item) != TYPE_DICTIONARY or typeof(item.get("shape")) != TYPE_ARRAY:
+			return false
+		var shape: Array[Vector2i] = []
+		for pair in item["shape"]:
+			shape.append(Vector2i(int(pair[0]), int(pair[1])))
+		var color := clampi(int(item.get("color", 0)), 0, PieceGenerator.COLOR_COUNT - 1)
+		new_tray.append({"shape": shape, "color": color})
+
+	for i in cells.size():
+		board.cells[i] = clampi(int(cells[i]), Board.EMPTY, PieceGenerator.COLOR_COUNT - 1)
+	tray = new_tray
+	score = int(data.get("score", 0))
+	streak = int(data.get("streak", 0))
+	moves_since_clear = int(data.get("moves_since_clear", 0))
+	if tray.all(func(p): return p == null):
+		refill_tray()
+	game_over = not has_any_move()
+	return true
+
+
 ## Tries to put the piece from tray[slot] at (col, row).
 ## Returns {"ok": false} or a Dictionary describing what happened.
 func try_place(slot: int, col: int, row: int) -> Dictionary:

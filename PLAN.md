@@ -11,9 +11,9 @@
 - [x] Phase 1 — Project structure
 - [x] Phase 2 — Game rules (board, pieces, clearing, scoring, game over) + tests
 - [x] Phase 3 — Touch controls (drag, ghost preview, return animation)
-- [~] Phase 4 — Look and identity (name chosen: **Bloxo**; theme still to pick)
+- [x] Phase 4 — Look and identity (**Bloxo**, neon theme, block logo, icons, Audiowide font)
 - [~] Phase 5 — Audio (generated starter sounds; music still missing)
-- [~] Phase 6 — Screens (menu, pause, game over done; resume-saved-game pending)
+- [x] Phase 6 — Screens (splash, menu with Continue, pause, game over, auto-save/resume, safe area)
 - [ ] Phase 7 — Testing on a real phone
 - [ ] Phase 8 — Ads (optional)
 - [ ] Phase 9 — Android export (AAB)
@@ -115,17 +115,19 @@ After every move: if none of the remaining pieces fit → game over, best score 
 ## 🎨 Phase 4 — Look and identity
 
 1. **Name:** **Bloxo** ✅ (store title: *Bloxo: Block Puzzle*)
-2. **Theme:** 🌌 neon / 🍬 candy / 💎 gems / 🌿 nature — *to decide*
-3. **Colors:** all in `autoload/palette.gd`
-4. **Images (when replacing the code-drawn look):**
+2. **Theme:** 🌌 **Neon** ✅ — dark glass blocks with glowing borders, synthwave grid background
+3. **Colors:** all in `autoload/palette.gd` ✅
+4. **Logo:** "BLOXO" built from neon blocks ✅ (`ui/neon_logo.gd` in game, `tools/make_logo.py` for PNGs)
+5. **Icons:** `icon.png`, adaptive foreground/background, store icon, feature graphic ✅
+6. **Font:** Audiowide (SIL OFL) ✅
 
-| Image | Size | Notes |
+Generated images in `assets/images/`:
+| Image | Size | Use |
 |---|---|---|
-| Block cell | 128×128 | one **gray/white** image, tinted in code |
-| Background | 1080×1920 | or the current code gradient |
-| Buttons | 128×128 | |
-| Logo | 800×300 | |
-| App icon | 512×512 + adaptive | |
+| `logo.png` | 1200×360 | boot splash, store, social |
+| `store_icon.png` | 512×512 | Google Play icon |
+| `icon_foreground.png` / `icon_background.png` | 432×432 | Android adaptive icon |
+| `feature_graphic.png` | 1024×500 | Google Play feature graphic |
 
 **Free legal sources:** Kenney.nl (CC0), or design in Figma/Inkscape.
 
@@ -157,14 +159,15 @@ After every move: if none of the remaining pieces fit → game over, best score 
 - ✅ Game: score, best score, pause button
 - ✅ Pause: resume / restart / home + settings
 - ✅ Game over: score, "NEW BEST!", play again
-- ⏳ Save and resume an unfinished game
-- ⏳ Splash screen with the logo
-- ⏳ Safe area for notched phones
+- ✅ Auto-save after every move + **Continue** on the menu
+- ✅ Splash: boot splash (logo image) + animated block logo
+- ✅ Safe area: HUD and tray avoid notches / system bars
 
 ---
 
 ## ✅ Phase 7 — Testing
-1. **Automated:** `godot --headless --path . -s tests/test_runner.gd`
+1. **Automated:** `godot --headless --path . -s tests/test_runner.gd` (rules) and
+   `godot --headless --path . res://tests/smoke_test.tscn` (plays real moves)
 2. **Desktop:** ▶️ in Godot, play with the mouse
 3. **Phone:** USB cable + USB debugging + Godot's Android remote deploy button
 4. **Checklist:**
@@ -228,7 +231,7 @@ After every move: if none of the remaining pieces fit → game over, best score 
 | Week | Work | Result |
 |---|---|---|
 | 1 | Phases 0–3 | playable game ✅ |
-| 2 | Phases 4–6 | own look, sounds, all screens |
+| 2 | Phases 4–6 | own look, sounds, all screens ✅ (music pending) |
 | 3 | Phases 7–9 | running on a phone + ads + AAB |
 | 4–5 | Phase 10 | closed test (14 days) |
 | 6 | | 🚀 launch |

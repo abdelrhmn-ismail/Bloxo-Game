@@ -19,7 +19,12 @@ config/description="Bloxo - an original block puzzle game."
 run/main_scene="res://scenes/main.tscn"
 config/quit_on_go_back=false
 config/features=PackedStringArray("4.7", "Mobile")
-config/icon="res://icon.svg"
+config/icon="res://icon.png"
+boot_splash/bg_color=Color(0.0157, 0.0078, 0.0471, 1)
+boot_splash/show_image=true
+boot_splash/image="res://assets/images/logo.png"
+boot_splash/fullsize=false
+boot_splash/use_filter=true
 
 [autoload]
 
@@ -36,6 +41,10 @@ window/size/window_height_override=768
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=1
+
+[gui]
+
+theme/custom_font="res://assets/fonts/Audiowide-Regular.ttf"
 
 [input_devices]
 

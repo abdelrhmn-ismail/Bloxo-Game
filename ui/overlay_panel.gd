@@ -1,9 +1,10 @@
 class_name OverlayPanel
 extends Control
 ## Base for pop-up windows (pause, game over): dims the screen and
-## shows a centered rounded panel. Subclasses add rows with add_*().
+## shows a centered neon panel. Subclasses add rows with add_*().
 
 var box: VBoxContainer
+var panel: PanelContainer
 
 
 func _init() -> void:
@@ -11,7 +12,7 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.6)
+	dim.color = Color(0.01, 0.0, 0.04, 0.75)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
 
@@ -19,9 +20,10 @@ func _init() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 
-	var panel := PanelContainer.new()
+	panel = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(760, 0)
-	panel.add_theme_stylebox_override("panel", UIKit.panel_style(Palette.panel, 48, 56))
+	panel.add_theme_stylebox_override("panel",
+		UIKit.neon_panel_style(Palette.panel, Palette.panel_edge, 48, 56, 5, 30))
 	center.add_child(panel)
 
 	box = VBoxContainer.new()
@@ -41,7 +43,7 @@ func add_text(text: String, font_size: int, color: Color) -> Label:
 
 
 func add_button(text: String, on_press: Callable, color: Color = Color.TRANSPARENT) -> Button:
-	var b := UIKit.button(text, Vector2(640, 140), 56, color)
+	var b := UIKit.button(text, Vector2(640, 140), 52, color)
 	b.pressed.connect(on_press)
 	box.add_child(b)
 	return b
@@ -49,7 +51,7 @@ func add_button(text: String, on_press: Callable, color: Color = Color.TRANSPARE
 
 ## A button that flips an on/off setting stored in SaveData.
 func add_toggle(title: String, setting: String) -> Button:
-	var b := UIKit.button("", Vector2(640, 110), 44, Palette.button.darkened(0.2))
+	var b := UIKit.button("", Vector2(640, 110), 40, Palette.text_dim)
 	var refresh := func(): b.text = "%s: %s" % [title, "ON" if SaveData.get(setting) else "OFF"]
 	refresh.call()
 	b.pressed.connect(func():

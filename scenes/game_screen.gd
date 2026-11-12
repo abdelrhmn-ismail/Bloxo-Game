@@ -11,6 +11,8 @@ const LIFT_CELLS := 0.9
 const TRAY_SCALE := 0.55
 
 var state := GameState.new()
+## Set by Main before adding the screen: continue the saved game?
+var resume_saved := false
 
 # --- layout (recomputed when the screen size changes) ---
 var view_size := Vector2.ZERO
@@ -50,6 +52,14 @@ var board_style: StyleBoxFlat
 
 
 func _ready() -> void:
+	if resume_saved and SaveData.has_saved_game():
+		if not state.from_dict(SaveData.saved_game) or state.game_over:
+			state.new_game()
+	else:
+		# Starting fresh replaces any unfinished game.
+		SaveData.saved_game = {}
+		SaveData.write()
+	displayed_score = float(state.score)
 	best_at_start = SaveData.best_score
 	effects = Node2D.new()
 	add_child(effects)
@@ -93,23 +103,26 @@ func _build_hud() -> void:
 
 func _layout() -> void:
 	view_size = get_viewport_rect().size
-	var top_safe := 70.0
+	# Keep clear of notches / system bars on phones.
+	var insets := UIKit.safe_insets(get_viewport())
+	var top_safe := 60.0 + insets.x
+	var bottom_safe := view_size.y - insets.y
 
 	var board_px := minf(view_size.x - 80.0, 1000.0)
-	board_px = minf(board_px, view_size.y * 0.52)
+	board_px = minf(board_px, (bottom_safe - top_safe) * 0.52)
 	cell_size = board_px / Board.SIZE
 	board_style = null # rebuilt at the new size
 	board_origin = Vector2(
 		(view_size.x - board_px) * 0.5,
-		maxf(top_safe + 300.0, view_size.y * 0.47 - board_px * 0.5))
+		maxf(top_safe + 300.0, top_safe + (bottom_safe - top_safe) * 0.45 - board_px * 0.5))
 
 	var board_bottom := board_origin.y + board_px
-	var tray_y := board_bottom + (view_size.y - board_bottom) * 0.5
+	var tray_y := board_bottom + (bottom_safe - board_bottom) * 0.5
 	var spacing := minf(view_size.x / 3.0, 360.0)
 	tray_centers.clear()
 	for i in GameState.TRAY_SIZE:
 		tray_centers.append(Vector2(view_size.x * 0.5 + (i - 1) * spacing, tray_y))
-	tray_slot_size = Vector2(spacing, minf(view_size.y - board_bottom, 460.0))
+	tray_slot_size = Vector2(spacing, minf(bottom_safe - board_bottom, 460.0))
 
 	best_label.size = Vector2(view_size.x * 0.6, 130)
 	best_label.position = Vector2(50, top_safe)
@@ -144,7 +157,8 @@ func _draw_board() -> void:
 	var board_px := cell_size * Board.SIZE
 	var pad := cell_size * 0.14
 	if board_style == null:
-		board_style = UIKit.panel_style(Palette.board_bg, int(cell_size * 0.3))
+		board_style = UIKit.neon_panel_style(Palette.board_bg, Palette.board_glow,
+			int(cell_size * 0.3), 0, 4, int(cell_size * 0.25))
 	draw_style_box(board_style,
 		Rect2(board_origin - Vector2(pad, pad), Vector2.ONE * (board_px + pad * 2)))
 
@@ -327,6 +341,15 @@ func _on_placed(result: Dictionary) -> void:
 
 	if result["game_over"]:
 		_on_game_over()
+	else:
+		_save_progress()
+
+
+## Saves the unfinished game after every move, so closing the app
+## (or the phone killing it) never loses progress.
+func _save_progress() -> void:
+	SaveData.saved_game = state.to_dict()
+	SaveData.write()
 
 
 func _play_clear(result: Dictionary) -> void:
@@ -381,6 +404,7 @@ func _update_best_label() -> void:
 
 
 func _on_game_over() -> void:
+	SaveData.saved_game = {}
 	SaveData.write()
 	var is_new_best := state.score > best_at_start
 	var tw := create_tween()
@@ -429,6 +453,7 @@ func _close_overlay() -> void:
 
 func _restart() -> void:
 	_close_overlay()
+	SaveData.saved_game = {}
 	SaveData.write()
 	for fx in effects.get_children():
 		fx.queue_free()

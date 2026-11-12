@@ -1,5 +1,6 @@
 extends Node
-## Entry point: keeps the background and switches between screens.
+## Entry point: keeps the background and switches between screens
+## (splash → menu → game).
 
 var current: Node
 ## Control-based screens (menus) live here so they get the full screen size.
@@ -11,7 +12,13 @@ func _ready() -> void:
 	add_child(GradientBackground.new())
 	ui_layer = CanvasLayer.new()
 	add_child(ui_layer)
-	show_menu()
+	show_splash()
+
+
+func show_splash() -> void:
+	var splash := SplashScreen.new()
+	splash.finished.connect(show_menu)
+	_switch_to(splash)
 
 
 func show_menu() -> void:
@@ -20,8 +27,9 @@ func show_menu() -> void:
 	_switch_to(menu)
 
 
-func show_game() -> void:
+func show_game(resume: bool = false) -> void:
 	var game := GameScreen.new()
+	game.resume_saved = resume
 	game.exit_to_menu.connect(show_menu)
 	_switch_to(game)
 

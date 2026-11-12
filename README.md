@@ -18,9 +18,15 @@ If anything red shows up in the **Output** panel, copy it and open an issue.
 From the project folder:
 ```
 godot --headless --path . --import
-godot --headless --path . -s tests/test_runner.gd
+godot --headless --path . -s tests/test_runner.gd      # rule tests → "0 failed"
+godot --headless --path . res://tests/smoke_test.tscn  # plays real moves → "smoke test: OK"
 ```
-The last line should say `0 failed`.
+
+## 🖼️ Regenerate the logo and icons
+```
+python3 tools/make_logo.py     # needs Pillow
+python3 tools/make_sounds.py   # starter sound effects
+```
 
 ## 🎮 How to play
 - Drag one of the 3 pieces onto an empty spot (pieces cannot be rotated)
@@ -38,10 +44,13 @@ The last line should say `0 failed`.
 | Piece shapes | `logic/shapes.gd` (drawn with `X` and `.`) |
 | Points and combos | `logic/scoring.gd` |
 | Difficulty | `logic/piece_generator.gd`, `logic/game_state.gd` |
-| Block look | `effects/cell_painter.gd` |
+| Block look (neon) | `effects/cell_painter.gd` |
+| In-game logo | `ui/neon_logo.gd` |
+| Logo / icon images | `tools/make_logo.py` → `icon.png`, `assets/images/` |
+| Font | `assets/fonts/` (Audiowide, SIL OFL) + `project.godot` → `gui/theme/custom_font` |
 | Sounds | put a file with the same name in `assets/sounds/` |
 | Background music | add `assets/sounds/music.ogg` |
-| Icon | `icon.svg` |
+| App icon | `icon.png` (generated) |
 
 ## 📁 Project structure
 ```
@@ -51,6 +60,10 @@ scenes/     main entry, menu, game screen, background
 ui/         buttons, labels and pop-up panels
 effects/    block drawing, clear effect, floating text
 assets/     images, sounds, fonts
-tests/      rule tests
-tools/      helper scripts (starter sound generator)
+tests/      rule tests + smoke test scene
+tools/      helper scripts (logo/icon renderer, starter sound generator)
 ```
+
+## 📜 Credits
+- Font: [Audiowide](https://fonts.google.com/specimen/Audiowide) by Astigmatic — SIL Open Font License 1.1 (`assets/fonts/OFL.txt`)
+- Everything else (code, logo, icons, sounds) is original to this project.

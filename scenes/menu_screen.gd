@@ -1,8 +1,9 @@
 class_name MenuScreen
 extends Control
-## Start screen: logo, title, best score, play button, settings.
+## Start screen: logo, best score, Continue / Play, settings.
 
-signal play_pressed
+## resume = true when the player picked "Continue".
+signal play_pressed(resume: bool)
 
 
 func _ready() -> void:
@@ -13,26 +14,25 @@ func _ready() -> void:
 	add_child(center)
 
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 40)
+	box.add_theme_constant_override("separation", 36)
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	center.add_child(box)
 
-	var logo := LogoBlocks.new()
+	var logo := NeonLogo.new(32.0)
 	logo.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	box.add_child(logo)
-
-	var title_text := str(ProjectSettings.get_setting("application/config/name", "Bloxo"))
-	box.add_child(UIKit.label(title_text.to_upper(), 120, Palette.text))
+	box.add_child(UIKit.label("BLOCK PUZZLE", 44, Palette.text_dim))
 	box.add_child(UIKit.label("BEST  %d" % SaveData.best_score, 56, Palette.accent))
 
 	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 60)
+	spacer.custom_minimum_size = Vector2(0, 50)
 	box.add_child(spacer)
 
-	var play := UIKit.button("PLAY", Vector2(600, 180), 80, Palette.button_primary)
-	play.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	play.pressed.connect(func(): play_pressed.emit())
-	box.add_child(play)
+	if SaveData.has_saved_game():
+		box.add_child(_big_button("CONTINUE", Palette.button_primary, true))
+		box.add_child(_big_button("NEW GAME", Palette.button, false))
+	else:
+		box.add_child(_big_button("PLAY", Palette.button_primary, false))
 
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -45,8 +45,15 @@ func _ready() -> void:
 	Audio.play_music()
 
 
+func _big_button(text: String, color: Color, resume: bool) -> Button:
+	var b := UIKit.button(text, Vector2(620, 170), 72, color)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	b.pressed.connect(func(): play_pressed.emit(resume))
+	return b
+
+
 func _toggle(title: String, setting: String) -> Button:
-	var b := UIKit.button("", Vector2(250, 110), 36, Palette.button.darkened(0.2))
+	var b := UIKit.button("", Vector2(260, 120), 32, Palette.text_dim)
 	var refresh := func(): b.text = "%s\n%s" % [title, "ON" if SaveData.get(setting) else "OFF"]
 	refresh.call()
 	b.pressed.connect(func():
