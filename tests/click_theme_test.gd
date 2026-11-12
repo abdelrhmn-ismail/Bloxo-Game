@@ -10,10 +10,16 @@ func _ready() -> void:
 func _run() -> void:
 	var tree := get_tree()
 	var backup := SaveData.theme
+	# Hide an unclaimed daily-gift pop-up for the test (without claiming it).
+	var daily_backup := SaveData.last_daily_date
+	SaveData.last_daily_date = Time.get_date_string_from_system()
 	Palette.set_theme("neon")
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	tree.root.add_child(main)
 	main.show_menu()
+	# The THEME button lives in Settings (gear icon); the menu re-opens
+	# Settings after each theme switch.
+	main.current.open_settings()
 	for i in 5:
 		await tree.create_timer(0.3).timeout
 		var btn := _find_theme_button(main.current)
@@ -38,7 +44,8 @@ func _run() -> void:
 		var expected: String = Themes.ORDER[(i + 1) % Themes.ORDER.size()]
 		print("click %d -> %s (expected %s)%s" % [i + 1, Palette.theme_id, expected,
 			"" if Palette.theme_id == expected else "  FAIL"])
-	Palette.set_theme(backup)
+	SaveData.last_daily_date = daily_backup
+	Palette.set_theme(backup) # also writes the save file
 	tree.quit()
 
 

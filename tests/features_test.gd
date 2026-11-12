@@ -16,6 +16,8 @@ func _run() -> void:
 	var backup := {
 		"saved_game": SaveData.saved_game.duplicate(true), "tutorial_done": SaveData.tutorial_done,
 		"hints_on": SaveData.hints_on, "music_on": SaveData.music_on, "theme": SaveData.theme,
+		"powerups": SaveData.powerups.duplicate(), "last_daily_date": SaveData.last_daily_date,
+		"last_hourly_time": SaveData.last_hourly_time, "best_score": SaveData.best_score,
 	}
 	SaveData.saved_game = {}
 
@@ -23,6 +25,9 @@ func _run() -> void:
 	await _test_tutorial_skip()
 	await _test_hint()
 	await _test_music()
+	await _test_powerups()
+	await _test_rescue()
+	await _test_gifts()
 
 	for key in backup:
 		SaveData.set(key, backup[key])
@@ -51,7 +56,7 @@ func _test_tutorial() -> void:
 	# Wrong move: place it somewhere that clears nothing.
 	_drag(game, 1, Vector2i(0, 0))
 	await tree.create_timer(1.0).timeout
-	_check(game.tutorial_step == 2 and game.tutorial_text_key == "TUT_TRY_AGAIN", "wrong move -> try again")
+	_check(game.tutorial_step == 2 and game.banner_key == "TUT_TRY_AGAIN", "wrong move -> try again")
 
 	# Right move: fill the gap → line clears → end panel.
 	_drag(game, 1, game.guide_cell)
@@ -121,6 +126,131 @@ func _test_music() -> void:
 	Audio.refresh_music()
 	_check(Audio.current_music() == "", "music stops when turned off")
 	print("music: ok")
+
+
+func _tap_board(game: GameScreen, cell: Vector2i) -> void:
+	var e := InputEventScreenTouch.new()
+	e.index = 0
+	e.pressed = true
+	e.position = game.board_origin + (Vector2(cell) + Vector2(0.5, 0.5)) * game.cell_size
+	game._unhandled_input(e)
+
+
+func _test_powerups() -> void:
+	SaveData.powerups = {"hammer": 2, "bomb": 2, "shuffle": 2, "undo": 2}
+	var game := GameScreen.new()
+	tree.root.add_child(game)
+	await tree.process_frame
+	_check(game.power_buttons.size() == 4 and game.power_buttons["bomb"].visible, "power-up bar shown")
+
+	# Hammer: button → aim → tap a block → it breaks, count goes down.
+	game.state.board.set_cell(1, 1, 2)
+	game._on_power_pressed("hammer")
+	_check(game.aim_mode == "hammer" and game.banner_key == "TAP_HAMMER", "hammer waits for a tap")
+	_tap_board(game, Vector2i(5, 5)) # empty cell: nothing happens, still aiming
+	_check(game.aim_mode == "hammer" and SaveData.powerup_count("hammer") == 2, "tapping an empty cell keeps aiming")
+	_tap_board(game, Vector2i(1, 1))
+	_check(game.state.board.get_cell(1, 1) == Board.EMPTY, "hammer broke the block")
+	_check(SaveData.powerup_count("hammer") == 1 and game.aim_mode == "", "hammer used once")
+
+	# Pressing the active button again cancels without spending.
+	game._on_power_pressed("bomb")
+	game._on_power_pressed("bomb")
+	_check(game.aim_mode == "" and SaveData.powerup_count("bomb") == 2, "second press cancels the bomb")
+
+	# Bomb: clears a 3x3 area.
+	for c in Rewards.bomb_area(Vector2i(4, 4)):
+		game.state.board.set_cell(c.x, c.y, 1)
+	game._on_power_pressed("bomb")
+	_tap_board(game, Vector2i(4, 4))
+	_check(game.state.board.filled_count() == 0, "bomb cleared the 3x3 area")
+	_check(SaveData.powerup_count("bomb") == 1, "bomb used once")
+
+	# Shuffle: new tray.
+	game.state.tray[0] = null
+	game.state.tray[1] = null
+	game._on_power_pressed("shuffle")
+	_check(game.state.tray.all(func(p): return p != null), "shuffle refilled the tray")
+	_check(SaveData.powerup_count("shuffle") == 1, "shuffle used once")
+
+	# Undo: place a piece, then undo it.
+	game._on_power_pressed("undo")
+	_check(SaveData.powerup_count("undo") == 2, "undo with nothing to undo is free")
+	var before_cells := game.state.board.filled_count()
+	var before_score := game.state.score
+	var slot := 0
+	_drag(game, slot, Vector2i(0, 0))
+	await tree.process_frame
+	_check(game.state.board.filled_count() > before_cells, "piece placed before undo")
+	game._on_power_pressed("undo")
+	_check(game.state.board.filled_count() == before_cells and game.state.score == before_score, "undo restored board and score")
+	_check(game.state.tray[slot] != null and SaveData.powerup_count("undo") == 1, "undo returned the piece")
+	game.queue_free()
+	await tree.process_frame
+	print("power-ups: ok")
+
+
+func _test_rescue() -> void:
+	SaveData.powerups = {"hammer": 0, "bomb": 1, "shuffle": 0, "undo": 0}
+	var game := GameScreen.new()
+	tree.root.add_child(game)
+	await tree.process_frame
+	# Build a stuck board: everything full except a scattered pattern, tray = 3x3 squares.
+	for r in Board.SIZE:
+		for c in Board.SIZE:
+			game.state.board.set_cell(c, r, 0 if (r + c) % 2 == 0 else Board.EMPTY)
+	var big := {"shape": Shapes.parse("XXX\nXXX\nXXX"), "color": 1}
+	game.state.tray = [big, null, null]
+	game.state.game_over = not game.state.has_any_move()
+	_check(game.state.game_over, "test board is stuck")
+	game._show_game_over_panel(false)
+	await tree.process_frame
+	_check(game._can_rescue(), "rescue offered with a bomb in stock")
+	var panel: GameOverPanel = game.overlay
+	panel.keep_playing_pressed.emit()
+	await tree.process_frame
+	_check(game.rescue_mode and game.overlay == null and game.banner_key == "RESCUE", "rescue mode started")
+	game._on_power_pressed("bomb")
+	_tap_board(game, Vector2i(1, 1)) # clears a 3x3 → the 3x3 piece fits
+	_check(not game.state.game_over and not game.rescue_mode, "bomb saved the game")
+	_check(game.banner_key == "", "rescue message gone")
+	game.queue_free()
+	await tree.process_frame
+	print("rescue: ok")
+
+
+func _test_gifts() -> void:
+	SaveData.powerups = {"hammer": 0, "bomb": 0, "shuffle": 0, "undo": 0}
+	SaveData.last_daily_date = ""
+	SaveData.last_hourly_time = 0.0
+	_check(SaveData.daily_gift_ready(), "daily gift ready the first time")
+	var gift := SaveData.claim_daily_gift()
+	_check(gift.size() == 4 and SaveData.powerup_count("bomb") == 1, "daily gift gives one of each")
+	_check(SaveData.claim_daily_gift().is_empty(), "daily gift only once per day")
+	var kind := SaveData.claim_hourly_gift()
+	_check(kind in Rewards.KINDS and SaveData.powerup_count(kind) == 2, "hourly gift adds a power-up")
+	_check(SaveData.claim_hourly_gift() == "", "hourly gift then waits")
+	_check(SaveData.hourly_gift_seconds_left() > 3500, "about an hour to wait")
+
+	# Menu shows the daily pop-up when available and claims it on close.
+	SaveData.last_daily_date = ""
+	var menu := MenuScreen.new()
+	tree.root.add_child(menu)
+	await tree.process_frame
+	await tree.process_frame
+	var panel: GiftPanel = null
+	for child in menu.get_children():
+		if child is GiftPanel:
+			panel = child
+	_check(panel != null, "menu shows the daily gift pop-up")
+	if panel:
+		var before := SaveData.powerup_count("hammer")
+		panel.close()
+		_check(SaveData.powerup_count("hammer") == before + 1, "closing the pop-up claims the gift")
+	_check(menu.gift_button.disabled, "free gift button waits for the timer")
+	menu.queue_free()
+	await tree.process_frame
+	print("gifts: ok")
 
 
 ## Drags tray[slot] so its top-left lands on `cell`, like a finger would.

@@ -75,10 +75,16 @@ static func neon_panel_style(fill: Color, edge: Color, radius: int, padding: int
 
 
 static func button(text: String, min_size: Vector2, font_size: int = 52, color: Color = Color.TRANSPARENT) -> Button:
-	if color == Color.TRANSPARENT:
-		color = Palette.button
 	var b := Button.new()
 	b.text = text
+	style_button(b, min_size, font_size, color)
+	return b
+
+
+## Applies the theme's button look to an existing Button.
+static func style_button(b: Button, min_size: Vector2, font_size: int = 52, color: Color = Color.TRANSPARENT) -> void:
+	if color == Color.TRANSPARENT:
+		color = Palette.button
 	b.custom_minimum_size = min_size
 	b.size = min_size
 	b.focus_mode = Control.FOCUS_NONE
@@ -103,9 +109,11 @@ static func button(text: String, min_size: Vector2, font_size: int = 52, color: 
 		b.add_theme_stylebox_override("normal", neon_panel_style(fill, color, 36, 20, 5, 16))
 		b.add_theme_stylebox_override("hover", neon_panel_style(fill.lightened(0.08), color.lightened(0.2), 36, 20, 5, 22))
 		b.add_theme_stylebox_override("pressed", neon_panel_style(Color(color.darkened(0.4), 0.95), Color.WHITE, 36, 20, 5, 26))
+	# Disabled buttons keep the same look (callers dim them with modulate).
+	b.add_theme_stylebox_override("disabled", b.get_theme_stylebox("normal"))
+	b.add_theme_color_override("font_disabled_color", b.get_theme_color("font_color"))
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	b.pressed.connect(func(): Audio.play("click"))
-	return b
 
 
 static func _solid_style(color: Color, edge: int) -> StyleBoxFlat:

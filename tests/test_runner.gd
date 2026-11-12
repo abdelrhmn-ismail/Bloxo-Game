@@ -23,6 +23,9 @@ func _init() -> void:
 	test_translations_are_complete()
 	test_restore_rejects_broken_shapes()
 	test_random_games_keep_rules()
+	test_rewards()
+	test_powerups_on_state()
+	test_snapshot_is_a_copy()
 	print("\n%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -207,9 +210,10 @@ func test_translations_are_complete() -> void:
 			var text = Strings.TEXT[key].get(lang)
 			check(text is String and text != "", "%s translated to %s" % [key, lang])
 		# Texts with a number placeholder must keep it in every language.
-		if "%d" in Strings.TEXT[key]["en"]:
-			for lang in Strings.LANGS:
-				check("%d" in Strings.TEXT[key][lang], "%s keeps %%d in %s" % [key, lang])
+		for ph in ["%d", "%s"]:
+			if ph in Strings.TEXT[key]["en"]:
+				for lang in Strings.LANGS:
+					check(ph in Strings.TEXT[key][lang], "%s keeps %s in %s" % [key, ph, lang])
 	# Every theme name and praise word used by the game has a text.
 	for id in Themes.ORDER:
 		check(Strings.TEXT.has("THEME_" + id.to_upper()), "theme %s has a translated name" % id)
@@ -294,6 +298,50 @@ func test_random_games_keep_rules() -> void:
 	print("random games: %d games, %d moves, best score %d, avg %.1f moves/game" % [
 		games, total_moves, best, float(total_moves) / games])
 	check(problems == 0, "random games kept every rule (%d problems)" % problems)
+
+
+func test_rewards() -> void:
+	check(Rewards.daily_available("", "2026-11-12"), "first daily gift is available")
+	check(not Rewards.daily_available("2026-11-12", "2026-11-12"), "daily gift only once a day")
+	check(Rewards.daily_available("2026-11-12", "2026-11-13"), "daily gift again the next day")
+	check(Rewards.hourly_seconds_left(0.0, 1000.0) == 0, "first hourly gift is ready")
+	check(Rewards.hourly_seconds_left(1000.0, 1000.0) == 3600, "just claimed: wait an hour")
+	check(Rewards.hourly_seconds_left(1000.0, 4600.0) == 0, "ready again after an hour")
+	check(Rewards.hourly_seconds_left(5000.0, 1000.0) == 0, "clock went back: not stuck")
+	var inv := {"hammer": 8}
+	check(Rewards.add(inv, "hammer", 5) == Rewards.MAX_EACH, "power-ups are capped")
+	check(Rewards.add(inv, "bomb", 1) == 1, "missing kind starts at 0")
+	check(Rewards.format_time(125) == "2:05", "countdown format")
+	check(Rewards.bomb_area(Vector2i(3, 3)).size() == 9, "bomb hits 3x3")
+	check(Rewards.bomb_area(Vector2i(0, 0)).size() == 4, "bomb is clipped at the corner")
+	for kind in Rewards.KINDS:
+		check(Strings.TEXT.has("POWER_" + kind.to_upper()), "power-up %s has a translated name" % kind)
+
+
+func test_powerups_on_state() -> void:
+	var gs := GameState.new(21)
+	gs.board.place(Shapes.parse("XXX"), 2, 2, 3)
+	var removed := gs.remove_cells([Vector2i(3, 2), Vector2i(7, 7)])
+	check(removed.size() == 1 and gs.board.get_cell(3, 2) == Board.EMPTY, "hammer removes one filled cell")
+	check(gs.board.filled_count() == 2, "other cells stay")
+	# Left: (2,2) and (4,2). A bomb centred on (3,2) covers both.
+	removed = gs.remove_cells(Rewards.bomb_area(Vector2i(3, 2)))
+	check(removed.size() == 2 and gs.board.is_empty(), "bomb clears the filled cells in its area")
+	var score := gs.score
+	gs.tray = [null, null, {"shape": Shapes.parse("X"), "color": 0}]
+	gs.shuffle_tray()
+	check(gs.tray.all(func(p): return p != null), "shuffle gives three new pieces")
+	check(gs.score == score, "power-ups give no points")
+
+
+## Undo relies on to_dict() being a real copy: later moves must not change it.
+func test_snapshot_is_a_copy() -> void:
+	var gs := GameState.new(8)
+	var snap := gs.to_dict()
+	gs.board.set_cell(0, 0, 3)
+	gs.score = 999
+	check(int(snap["cells"][0]) == Board.EMPTY, "snapshot board is not changed by later moves")
+	check(int(snap["score"]) == 0, "snapshot score is not changed by later moves")
 
 
 func test_tray_always_has_a_fitting_piece() -> void:

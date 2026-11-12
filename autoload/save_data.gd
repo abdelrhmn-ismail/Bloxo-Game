@@ -15,6 +15,12 @@ var tutorial_done := false
 var theme := ""
 ## Language code from logic/strings.gd ("" = follow the phone's language).
 var language := ""
+## Power-up counts, e.g. {"hammer": 2, "bomb": 0, ...}.
+var powerups := Rewards.STARTER.duplicate()
+## Local date ("2026-11-12") of the last daily gift claimed.
+var last_daily_date := ""
+## Unix time of the last hourly gift claimed (0 = never).
+var last_hourly_time := 0.0
 ## Snapshot from GameState.to_dict(), or {} when there is no game to resume.
 var saved_game := {}
 
@@ -44,6 +50,12 @@ func load_data() -> void:
 	tutorial_done = bool(data.get("tutorial_done", false))
 	theme = str(data.get("theme", ""))
 	language = str(data.get("language", ""))
+	var saved_powerups = data.get("powerups", Rewards.STARTER)
+	if typeof(saved_powerups) == TYPE_DICTIONARY:
+		for kind in Rewards.KINDS:
+			powerups[kind] = clampi(int(saved_powerups.get(kind, 0)), 0, Rewards.MAX_EACH)
+	last_daily_date = str(data.get("last_daily_date", ""))
+	last_hourly_time = float(data.get("last_hourly_time", 0.0))
 	var game = data.get("saved_game", {})
 	saved_game = game if typeof(game) == TYPE_DICTIONARY else {}
 
@@ -62,5 +74,56 @@ func write() -> void:
 		"tutorial_done": tutorial_done,
 		"theme": theme,
 		"language": language,
+		"powerups": powerups,
+		"last_daily_date": last_daily_date,
+		"last_hourly_time": last_hourly_time,
 		"saved_game": saved_game,
 	}))
+
+
+# --- power-ups & gifts ------------------------------------------------------
+
+func powerup_count(kind: String) -> int:
+	return int(powerups.get(kind, 0))
+
+
+## Spends one power-up. Returns false if there was none.
+func use_powerup(kind: String) -> bool:
+	if powerup_count(kind) <= 0:
+		return false
+	powerups[kind] = powerup_count(kind) - 1
+	write()
+	return true
+
+
+func daily_gift_ready() -> bool:
+	return Rewards.daily_available(last_daily_date, Time.get_date_string_from_system())
+
+
+## Gives today's gift once. Returns what was given ({} if already claimed).
+func claim_daily_gift() -> Dictionary:
+	if not daily_gift_ready():
+		return {}
+	for kind in Rewards.DAILY_GIFT:
+		Rewards.add(powerups, kind, Rewards.DAILY_GIFT[kind])
+	last_daily_date = Time.get_date_string_from_system()
+	write()
+	return Rewards.DAILY_GIFT
+
+
+func hourly_gift_seconds_left() -> int:
+	return Rewards.hourly_seconds_left(last_hourly_time, Time.get_unix_time_from_system())
+
+
+## Gives one random power-up if the hourly gift is ready. Returns its
+## kind, or "" if it is not ready yet.
+func claim_hourly_gift() -> String:
+	if hourly_gift_seconds_left() > 0:
+		return ""
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var kind := Rewards.random_kind(rng)
+	Rewards.add(powerups, kind, 1)
+	last_hourly_time = Time.get_unix_time_from_system()
+	write()
+	return kind

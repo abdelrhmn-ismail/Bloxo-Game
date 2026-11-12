@@ -53,6 +53,26 @@ func has_any_move() -> bool:
 	return false
 
 
+# --- power-ups --------------------------------------------------------------
+
+## Hammer / bomb: empties the given cells (no points). Returns the removed
+## cells as [{"pos", "color"}] (empty cells are skipped).
+func remove_cells(cells: Array) -> Array:
+	var removed := []
+	for pos in cells:
+		if board.is_inside(pos.x, pos.y) and board.get_cell(pos.x, pos.y) != Board.EMPTY:
+			removed.append({"pos": pos, "color": board.get_cell(pos.x, pos.y)})
+			board.set_cell(pos.x, pos.y, Board.EMPTY)
+	game_over = not has_any_move()
+	return removed
+
+
+## Shuffle: three brand-new pieces (fair: at least one fits).
+func shuffle_tray() -> void:
+	refill_tray()
+	game_over = not has_any_move()
+
+
 ## Snapshot of the game as plain data (for saving to JSON).
 func to_dict() -> Dictionary:
 	var tray_data := []
@@ -65,7 +85,7 @@ func to_dict() -> Dictionary:
 			cells.append([p.x, p.y])
 		tray_data.append({"shape": cells, "color": piece["color"]})
 	return {
-		"cells": Array(board.cells),
+		"cells": Array(board.cells.duplicate()), # a real copy, not a link to the live board
 		"tray": tray_data,
 		"score": score,
 		"streak": streak,

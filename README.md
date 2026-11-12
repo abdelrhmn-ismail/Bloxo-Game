@@ -41,6 +41,27 @@ python3 tools/make_music.py    # theme music loops (~15 s to render)
 - When you use all 3 pieces you get 3 new ones
 - **Game over** when none of your pieces fit anywhere
 
+## 🧰 Power-ups & free gifts (no ads)
+| Power-up | Effect |
+|---|---|
+| 🔨 Hammer | tap a block to break it |
+| 💣 Bomb | tap a spot to clear a 3×3 area |
+| 🔄 Shuffle | three new pieces |
+| ↩️ Undo | take back the last move |
+
+- Shown in a bar under the tray with a count on each; max 9 of each.
+- **Starter gift** (1 of each) for new players, a **daily gift** (1 of each, pop-up on the
+  menu once per day) and a **free gift every hour** (one random power-up, with a countdown).
+- When you run out of moves with power-ups left, the game-over screen offers **Keep playing**.
+- Rules in `logic/rewards.gd`; saved in `SaveData` (`powerups`, `last_daily_date`, `last_hourly_time`).
+- Gifts use the device clock, so they can be cheated by changing it; move them to a server
+  if they ever become valuable (e.g. if they can be bought).
+
+## ⚙️ Settings
+Behind the gear icon (menu corner and pause screen), grouped as **Sound & vibration**,
+**Look & language** (theme, language) and **Gameplay** (hints, how to play). Switching theme or
+language keeps Settings open. See `ui/settings_panel.gd`.
+
 ## ✨ Player helpers
 - **Tutorial** — the first new game starts with 3 steps (drag a piece, clear a line,
   how the game ends) with an animated hand. Skippable; replay from **How to play** on the menu.
@@ -83,7 +104,7 @@ godot --path . -- --theme=candy --screen=game-demo --shot=/tmp/candy.png
 |---|---|
 | `--theme=<id>` | preview a theme without saving it |
 | `--lang=<code>` | preview a language (`en fr de es it ar`) without saving it |
-| `--screen=menu\|game\|game-demo\|pause\|gameover\|tutorial\|hint` | skip the splash and open that screen (`game-demo` pre-fills the board, `hint` shows a hint at once) |
+| `--screen=menu\|settings\|game\|game-demo\|pause\|game-settings\|gameover\|tutorial\|hint` | skip the splash and open that screen (`game-demo` pre-fills the board, `hint` shows a hint at once) |
 | `--shot=<file.png>` | save a screenshot after ~1.5 s, then quit |
 
 ## 🎨 Where to change things

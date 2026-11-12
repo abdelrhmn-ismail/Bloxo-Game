@@ -6,7 +6,8 @@ extends Node
 ##   godot --path . -- --theme=candy --screen=game-demo
 ##   --theme=<id>        preview a theme without saving it
 ##   --lang=<code>       preview a language (en fr de es it ar) without saving it
-##   --screen=menu|game|game-demo|pause|gameover|tutorial|hint   skip the splash and open that screen
+##   --screen=menu|settings|game|game-demo|pause|game-settings|gameover|tutorial|hint
+##                       skip the splash and open that screen
 ##   --shot=<file.png>   save a screenshot after ~1.5 s, then quit
 
 var current: Node
@@ -45,6 +46,12 @@ func _ready() -> void:
 		"gameover":
 			show_game(false, 12)
 			current.call_deferred("_show_game_over_panel", true)
+		"settings":
+			show_menu()
+			(current as MenuScreen).open_settings()
+		"game-settings":
+			show_game(false, 12)
+			current.call_deferred("_open_settings")
 		"tutorial":
 			show_game(false, 0, true)
 		"hint":
@@ -105,10 +112,16 @@ func _switch_to(screen: Node) -> void:
 func _on_theme_changed() -> void:
 	# The game screen restyles itself; the menu is simply rebuilt.
 	if current is MenuScreen:
+		var reopen := (current as MenuScreen).settings_open
 		show_menu()
+		if reopen:
+			(current as MenuScreen).open_settings() # stay in Settings after switching
 
 
 func _notification(what: int) -> void:
 	# Android "Back" on the menu closes the app (in game it opens Pause).
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST and current is MenuScreen:
-		get_tree().quit()
+		if (current as MenuScreen).settings_open:
+			(current as MenuScreen).close_settings()
+		else:
+			get_tree().quit()

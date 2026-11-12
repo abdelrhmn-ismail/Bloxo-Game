@@ -26,12 +26,21 @@ var tutorial := false
 
 # --- tutorial / hints ---
 var tutorial_step := 0 # 0 = off, 1 = drag a piece, 2 = clear a line
-var tutorial_text_key := ""
+## Text key shown above the board instead of the score ("" = none):
+## tutorial steps, power-up instructions, rescue message.
+var banner_key := ""
 var tutorial_kept_save := false # started from "How to play" with a game to continue
 var guide_slot := -1 # tray piece the animated hand demonstrates (-1 = none)
 var guide_cell := Vector2i(-1, -1) # where it should go (top-left cell)
 var hint_active := false
 var idle_time := 0.0
+
+# --- power-ups ---
+var aim_mode := "" # "hammer" / "bomb" while waiting for a tap on the board
+var rescue_mode := false # out of moves, player chose to use a power-up
+var undo_snapshot := {} # game before the last move (for Undo)
+var power_buttons := {} # kind -> PowerupButton
+const POWER_BAR_HEIGHT := 160.0
 
 # --- layout (recomputed when the screen size changes) ---
 var view_size := Vector2.ZERO
@@ -86,11 +95,12 @@ func _ready() -> void:
 			state.new_game()
 			SaveData.saved_game = {}
 			SaveData.write()
-	else:
+	elif demo_moves == 0:
 		# Starting fresh replaces any unfinished game.
 		SaveData.saved_game = {}
 		SaveData.write()
 	if demo_moves > 0:
+		# Developer preview: never touches the player's saved game.
 		_play_demo_moves(demo_moves)
 	displayed_score = float(state.score)
 	best_at_start = SaveData.best_score
@@ -120,7 +130,10 @@ func _on_theme_changed() -> void:
 	hud.queue_free()
 	_build_hud()
 	_layout()
-	if overlay is PausePanel:
+	if overlay is SettingsPanel:
+		_close_overlay()
+		_open_settings() # stay in Settings after switching theme/language
+	elif overlay is PausePanel:
 		_close_overlay()
 		_open_pause()
 
@@ -179,19 +192,33 @@ func _build_hud() -> void:
 	skip_button = UIKit.button(Lang.t("SKIP"), Vector2(260, 110), 40, Palette.text_dim)
 	skip_button.pressed.connect(_finish_tutorial)
 	hud.add_child(skip_button)
+
+	# Power-up bar (under the tray).
+	power_buttons.clear()
+	for kind in Rewards.KINDS:
+		var b := PowerupButton.new(kind)
+		b.pressed.connect(_on_power_pressed.bind(kind))
+		hud.add_child(b)
+		power_buttons[kind] = b
 	_refresh_hud_mode()
 
 
-## Shows either the normal HUD or the tutorial HUD.
+## Shows the normal HUD, the tutorial HUD, or a banner message, and
+## updates the power-up buttons.
 func _refresh_hud_mode() -> void:
 	var in_tutorial := tutorial_step > 0
-	score_label.visible = not in_tutorial
+	var has_banner := banner_key != ""
+	score_label.visible = not has_banner
 	best_label.visible = not in_tutorial
 	pause_button.visible = not in_tutorial
-	tutorial_label.visible = in_tutorial
+	tutorial_label.visible = has_banner
 	skip_button.visible = in_tutorial
-	if in_tutorial:
-		tutorial_label.text = Lang.t(tutorial_text_key)
+	if has_banner:
+		tutorial_label.text = Lang.t(banner_key)
+	for kind in power_buttons:
+		var b: PowerupButton = power_buttons[kind]
+		b.visible = not in_tutorial
+		b.set_state(SaveData.powerup_count(kind), aim_mode == kind)
 
 
 func _layout() -> void:
@@ -199,15 +226,18 @@ func _layout() -> void:
 	# Keep clear of notches / system bars on phones.
 	var insets := UIKit.safe_insets(get_viewport())
 	var top_safe := 60.0 + insets.x
-	var bottom_safe := view_size.y - insets.y
+	var screen_bottom := view_size.y - insets.y
+	# The power-up bar sits at the very bottom; the board and tray share
+	# the space above it.
+	var bottom_safe := screen_bottom - POWER_BAR_HEIGHT
 
 	var board_px := minf(view_size.x - 80.0, 1000.0)
-	board_px = minf(board_px, (bottom_safe - top_safe) * 0.52)
+	board_px = minf(board_px, (bottom_safe - top_safe) * 0.55)
 	cell_size = board_px / Board.SIZE
 	board_style = null # rebuilt at the new size
 	board_origin = Vector2(
 		(view_size.x - board_px) * 0.5,
-		maxf(top_safe + 300.0, top_safe + (bottom_safe - top_safe) * 0.45 - board_px * 0.5))
+		maxf(top_safe + 290.0, top_safe + (bottom_safe - top_safe) * 0.45 - board_px * 0.5))
 
 	var board_bottom := board_origin.y + board_px
 	var tray_y := board_bottom + (bottom_safe - board_bottom) * 0.5
@@ -216,6 +246,17 @@ func _layout() -> void:
 	for i in GameState.TRAY_SIZE:
 		tray_centers.append(Vector2(view_size.x * 0.5 + (i - 1) * spacing, tray_y))
 	tray_slot_size = Vector2(spacing, minf(bottom_safe - board_bottom, 460.0))
+
+	var bar_gap := 30.0
+	var bar_w := Rewards.KINDS.size() * 200.0 + (Rewards.KINDS.size() - 1) * bar_gap
+	var bar_x := (view_size.x - bar_w) * 0.5
+	var order: Array = Rewards.KINDS.duplicate()
+	if Lang.is_rtl():
+		order.reverse()
+	for i in order.size():
+		var b: PowerupButton = power_buttons[order[i]]
+		b.size = Vector2(200, 130)
+		b.position = Vector2(bar_x + i * (200.0 + bar_gap), screen_bottom - POWER_BAR_HEIGHT + 10)
 
 	best_label.size = Vector2(view_size.x * 0.6, 130)
 	if Lang.is_rtl():
@@ -253,6 +294,8 @@ func _board_center() -> Vector2:
 
 func _draw() -> void:
 	_draw_board()
+	if aim_mode != "":
+		_draw_aim()
 	_draw_tray()
 	if drag_slot != -1:
 		_draw_dragged()
@@ -336,6 +379,17 @@ func _draw_piece(piece: Dictionary, center: Vector2, csize: float, alpha: float 
 		CellPainter.draw_cell(self, rect, color, alpha)
 
 
+## While the hammer/bomb waits for a target: pulse the filled cells.
+func _draw_aim() -> void:
+	var glow := 0.18 + 0.14 * sin(Time.get_ticks_msec() / 1000.0 * 6.0)
+	for row in Board.SIZE:
+		for col in Board.SIZE:
+			if state.board.get_cell(col, row) != Board.EMPTY:
+				var r := _cell_rect(col, row)
+				draw_rect(r, Color(1, 1, 1, glow))
+				draw_rect(r, Color(Palette.accent, glow * 2.0), false, 3.0)
+
+
 ## Animated hand showing a piece moving from the tray to guide_cell
 ## (tutorial steps and idle hints), plus a pulsing shadow at the target.
 func _draw_guide() -> void:
@@ -384,6 +438,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch and event.index == 0:
 		if event.pressed:
 			_clear_hint()
+			if aim_mode != "":
+				_aim_tap(event.position)
+				return
 			_try_pick(event.position)
 		elif drag_slot != -1:
 			_drop()
@@ -418,7 +475,7 @@ func _try_pick(pos: Vector2) -> void:
 ## move (logic/hint.gd) with the animated hand.
 func _update_hint(delta: float) -> void:
 	var can_hint := SaveData.hints_on and tutorial_step == 0 and overlay == null \
-		and not state.game_over and drag_slot == -1
+		and not state.game_over and drag_slot == -1 and aim_mode == "" and not rescue_mode
 	if not can_hint:
 		idle_time = 0.0
 		return
@@ -473,7 +530,10 @@ func _drop() -> void:
 	preview_lines = {"rows": [], "cols": []}
 
 	if could_place:
+		var before := state.to_dict()
 		var result := state.try_place(slot, target.x, target.y)
+		if result["ok"] and tutorial_step == 0:
+			undo_snapshot = before
 		if result["ok"]:
 			_on_placed(result)
 			return
@@ -532,6 +592,8 @@ func _on_placed(result: Dictionary) -> void:
 ## Saves the unfinished game after every move, so closing the app
 ## (or the phone killing it) never loses progress.
 func _save_progress() -> void:
+	if demo_moves > 0:
+		return # developer preview: leave the real save alone
 	SaveData.saved_game = state.to_dict()
 	SaveData.write()
 
@@ -605,10 +667,127 @@ func _on_game_over() -> void:
 
 func _show_game_over_panel(is_new_best: bool) -> void:
 	var panel := GameOverPanel.new()
-	panel.setup(state.score, SaveData.best_score, is_new_best)
+	panel.setup(state.score, SaveData.best_score, is_new_best, _can_rescue())
 	panel.play_again_pressed.connect(_restart)
 	panel.home_pressed.connect(func(): exit_to_menu.emit())
+	panel.keep_playing_pressed.connect(_start_rescue)
 	_show_overlay(panel)
+
+
+# =====================================================================
+# Power-ups: hammer, bomb, shuffle, undo
+# =====================================================================
+
+func _on_power_pressed(kind: String) -> void:
+	if overlay != null or tutorial_step > 0 or drag_slot != -1:
+		return
+	_clear_hint()
+	if aim_mode == kind:
+		_cancel_aim() # tapping the active button again cancels it
+		return
+	if SaveData.powerup_count(kind) <= 0:
+		return
+	match kind:
+		"shuffle":
+			SaveData.use_powerup(kind)
+			state.shuffle_tray()
+			Audio.play("pick", 0.8)
+			_animate_tray_in()
+			_after_powerup()
+		"undo":
+			if undo_snapshot.is_empty():
+				_popup(Lang.t("NOTHING_TO_UNDO"), _board_center(), 64, Palette.text)
+				return
+			SaveData.use_powerup(kind)
+			state.from_dict(undo_snapshot)
+			undo_snapshot = {}
+			Audio.play("pick", 0.7)
+			create_tween().tween_property(self, "displayed_score", float(state.score), 0.3)
+			_animate_tray_in()
+			_after_powerup()
+		"hammer", "bomb":
+			aim_mode = kind
+			banner_key = "TAP_HAMMER" if kind == "hammer" else "TAP_BOMB"
+			_refresh_hud_mode()
+
+
+func _cancel_aim() -> void:
+	aim_mode = ""
+	banner_key = "RESCUE" if rescue_mode else ""
+	_refresh_hud_mode()
+
+
+## The board cell under a screen position, or (-1, -1).
+func _cell_at(pos: Vector2) -> Vector2i:
+	var col := floori((pos.x - board_origin.x) / cell_size)
+	var row := floori((pos.y - board_origin.y) / cell_size)
+	if col < 0 or row < 0 or col >= Board.SIZE or row >= Board.SIZE:
+		return Vector2i(-1, -1)
+	return Vector2i(col, row)
+
+
+## A tap while the hammer or bomb is waiting for a target.
+func _aim_tap(pos: Vector2) -> void:
+	var cell := _cell_at(pos)
+	if cell.x < 0:
+		_cancel_aim() # tapped outside the board
+		return
+	var targets: Array = [cell] if aim_mode == "hammer" else Rewards.bomb_area(cell)
+	var removed := state.remove_cells(targets)
+	if removed.is_empty():
+		return # nothing to break there; keep aiming
+	SaveData.use_powerup(aim_mode)
+	for item in removed:
+		var p: Vector2i = item["pos"]
+		var fx := ClearEffect.new()
+		fx.setup(_cell_rect(p.x, p.y), Palette.piece_colors[item["color"]], Vector2(p - cell).length() * 0.04)
+		effects.add_child(fx)
+	Audio.play("clear", 0.75 if aim_mode == "bomb" else 0.9)
+	Audio.vibrate(90 if aim_mode == "bomb" else 40, 1.0 if aim_mode == "bomb" else 0.6)
+	if aim_mode == "bomb":
+		_shake()
+	aim_mode = ""
+	_after_powerup()
+
+
+## Common bookkeeping after any power-up was used.
+func _after_powerup() -> void:
+	if aim_mode == "":
+		banner_key = ""
+	# Hammer / bomb / shuffle change the game: an older Undo would also
+	# silently cancel them, so it is no longer offered.
+	undo_snapshot = {}
+	state.game_over = not state.has_any_move()
+	if rescue_mode:
+		if not state.game_over:
+			rescue_mode = false # saved!
+		elif not _can_rescue():
+			rescue_mode = false
+			_refresh_hud_mode()
+			_on_game_over()
+			return
+		else:
+			banner_key = "RESCUE"
+	_refresh_hud_mode()
+	if not state.game_over:
+		_save_progress()
+
+
+## Is there any power-up that could still help after running out of moves?
+func _can_rescue() -> bool:
+	for kind in ["hammer", "bomb", "shuffle"]:
+		if SaveData.powerup_count(kind) > 0:
+			return true
+	return SaveData.powerup_count("undo") > 0 and not undo_snapshot.is_empty()
+
+
+## "Keep playing" on the game-over panel: stay on the board and use a power-up.
+func _start_rescue() -> void:
+	_close_overlay()
+	rescue_mode = true
+	state.game_over = false # lets the power-up buttons and board taps work
+	banner_key = "RESCUE"
+	_refresh_hud_mode()
 
 
 # =====================================================================
@@ -632,7 +811,7 @@ func _tutorial_setup(step: int) -> void:
 		# Step 1: just drag the square onto the board.
 		state.tray = [null, _tutorial_piece("XX\nXX", 4), null]
 		guide_cell = Vector2i(3, 3)
-		tutorial_text_key = "TUT_DRAG"
+		banner_key = "TUT_DRAG"
 	else:
 		# Step 2: a row with a 3-cell gap and the exact piece to fill it.
 		var colors := [0, 1, 2, 5, 6]
@@ -643,8 +822,8 @@ func _tutorial_setup(step: int) -> void:
 				k += 1
 		state.tray = [null, _tutorial_piece("XXX", 3), null]
 		guide_cell = Vector2i(2, 5)
-		if tutorial_text_key != "TUT_TRY_AGAIN":
-			tutorial_text_key = "TUT_CLEAR"
+		if banner_key != "TUT_TRY_AGAIN":
+			banner_key = "TUT_CLEAR"
 	guide_slot = 1
 	_refresh_hud_mode()
 	_animate_tray_in()
@@ -662,7 +841,7 @@ func _tutorial_after_move(result: Dictionary) -> void:
 	elif result["line_count"] > 0:
 		tw.tween_callback(_tutorial_show_end)
 	else:
-		tutorial_text_key = "TUT_TRY_AGAIN"
+		banner_key = "TUT_TRY_AGAIN"
 		_refresh_hud_mode()
 		tw.tween_callback(_tutorial_setup.bind(2))
 
@@ -710,6 +889,19 @@ func _open_pause() -> void:
 	panel.home_pressed.connect(func():
 		SaveData.write()
 		exit_to_menu.emit())
+	panel.settings_pressed.connect(func():
+		_close_overlay()
+		_open_settings())
+	_show_overlay(panel)
+
+
+## Settings (from the pause gear). "Back" returns to the pause screen.
+func _open_settings() -> void:
+	var panel := SettingsPanel.new()
+	panel.setup(false)
+	panel.back_pressed.connect(func():
+		_close_overlay()
+		_open_pause())
 	_show_overlay(panel)
 
 
@@ -739,6 +931,12 @@ func _restart() -> void:
 	return_slot = -1
 	pulse = 0.0
 	_clear_hint()
+	aim_mode = ""
+	rescue_mode = false
+	undo_snapshot = {}
+	if tutorial_step == 0:
+		banner_key = ""
+	_refresh_hud_mode()
 	_animate_tray_in()
 
 
@@ -746,6 +944,9 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if tutorial_step > 0 or tutorial:
 			_finish_tutorial()
+		elif overlay is SettingsPanel:
+			_close_overlay()
+			_open_pause()
 		elif overlay is PausePanel:
 			_close_overlay()
 		elif overlay == null:

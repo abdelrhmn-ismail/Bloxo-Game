@@ -14,6 +14,8 @@
 - [x] Phase 4 — Look and identity (**Bloxo**, 4 switchable themes — Neon default, Candy, Gems, Nature — block logo, icons, Audiowide font)
 - [x] Phase 5 — Audio (generated sound effects + an original music loop per theme)
 - [x] Player helpers — first-time tutorial, idle hints, stronger vibration on big combos
+- [x] Power-ups (hammer, bomb, shuffle, undo) + daily and hourly free gifts (no ads yet) + "Keep playing" rescue
+- [x] Settings screen behind a gear icon, grouped in sections
 - [x] Languages — English, French, German, Spanish, Italian, Arabic (RTL); follows the phone, switchable in settings
 - [x] Phase 6 — Screens (splash, menu with Continue, pause, game over, auto-save/resume, safe area)
 - [ ] Phase 7 — Testing on a real phone
