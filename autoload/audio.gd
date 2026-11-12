@@ -9,7 +9,9 @@ extends Node
 
 const SOUND_DIR := "res://assets/sounds/"
 const POOL_SIZE := 8
-const MUSIC_DB := -12.0
+## Background music volume: 70% of the previous level (-12 dB),
+## i.e. -12 + linear_to_db(0.7) ≈ -15.1 dB.
+const MUSIC_DB := -15.1
 const FADE := 0.4
 
 var _streams := {}
