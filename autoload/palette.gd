@@ -65,6 +65,11 @@ func set_theme(id: String) -> void:
 	SaveData.write()
 
 
+## The current theme's name in the current language.
+func display_name() -> String:
+	return Lang.t("THEME_" + theme_id.to_upper())
+
+
 ## Next theme (used by the THEME buttons). Ignores a duplicated click.
 func cycle_theme() -> void:
 	if not UIKit.accept_action():

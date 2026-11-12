@@ -27,7 +27,7 @@ func _ready() -> void:
 	box.add_child(logo)
 	logo.play_intro(0.9)
 
-	var tagline := UIKit.label("BLOCK PUZZLE", 44, Palette.text_dim)
+	var tagline := UIKit.label(Lang.t("BLOCK_PUZZLE"), 44, Palette.text_dim)
 	tagline.modulate.a = 0.0
 	box.add_child(tagline)
 

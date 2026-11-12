@@ -21,14 +21,15 @@ static func clear_points(cleared_cells: int, line_count: int, streak: int) -> in
 	return points
 
 
-## Word shown on screen after a clear ("" = no word).
+## Text key (see logic/strings.gd) of the word shown after a clear
+## ("" = no word).
 static func praise_word(line_count: int) -> String:
 	match line_count:
 		0, 1:
 			return ""
 		2:
-			return "Great!"
+			return "GREAT"
 		3:
-			return "Excellent!"
+			return "EXCELLENT"
 		_:
-			return "Amazing!"
+			return "AMAZING"

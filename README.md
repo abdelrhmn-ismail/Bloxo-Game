@@ -50,6 +50,16 @@ The choice is saved. **Neon** is the default.
 
 Add a theme by copying an entry in `logic/themes.gd` and adding its id to `ORDER`.
 
+## 🌍 Languages
+English, French, German, Spanish, Italian and Arabic (right-to-left).
+The first launch follows the phone's language (English if unsupported); players can
+switch from the menu (**LANGUAGE** button) or the pause screen, and the choice is saved.
+
+- All texts: `logic/strings.gd` → use them in code with `Lang.t("KEY")`
+- Add a language: add its code to `LANGS`, its name to `NAMES`, and a translation to
+  every entry in `TEXT` — the tests fail if anything is missing
+- Arabic uses the **Tajawal** font automatically (Audiowide has no Arabic letters)
+
 ## 🛠️ Developer options
 Arguments after `--` (handy for previews and screenshots):
 ```
@@ -58,6 +68,7 @@ godot --path . -- --theme=candy --screen=game-demo --shot=/tmp/candy.png
 | Option | Effect |
 |---|---|
 | `--theme=<id>` | preview a theme without saving it |
+| `--lang=<code>` | preview a language (`en fr de es it ar`) without saving it |
 | `--screen=menu\|game\|game-demo\|pause` | skip the splash and open that screen (`game-demo` pre-fills the board) |
 | `--shot=<file.png>` | save a screenshot after ~1.5 s, then quit |
 
@@ -91,5 +102,6 @@ tools/      helper scripts (logo/icon renderer, starter sound generator)
 ```
 
 ## 📜 Credits
-- Font: [Audiowide](https://fonts.google.com/specimen/Audiowide) by Astigmatic — SIL Open Font License 1.1 (`assets/fonts/OFL.txt`)
+- Font: [Audiowide](https://fonts.google.com/specimen/Audiowide) by Astigmatic — SIL Open Font License 1.1 (`assets/fonts/OFL-Audiowide.txt`)
+- Arabic font: [Tajawal](https://fonts.google.com/specimen/Tajawal) by Boutros International — SIL Open Font License 1.1 (`assets/fonts/OFL-Tajawal.txt`)
 - Everything else (code, logo, icons, sounds) is original to this project.

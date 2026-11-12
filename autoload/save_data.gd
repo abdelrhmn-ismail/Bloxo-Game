@@ -10,6 +10,8 @@ var music_on := true
 var vibration_on := true
 ## Theme id from logic/themes.gd ("" = default theme).
 var theme := ""
+## Language code from logic/strings.gd ("" = follow the phone's language).
+var language := ""
 ## Snapshot from GameState.to_dict(), or {} when there is no game to resume.
 var saved_game := {}
 
@@ -36,6 +38,7 @@ func load_data() -> void:
 	music_on = bool(data.get("music_on", true))
 	vibration_on = bool(data.get("vibration_on", true))
 	theme = str(data.get("theme", ""))
+	language = str(data.get("language", ""))
 	var game = data.get("saved_game", {})
 	saved_game = game if typeof(game) == TYPE_DICTIONARY else {}
 
@@ -51,5 +54,6 @@ func write() -> void:
 		"music_on": music_on,
 		"vibration_on": vibration_on,
 		"theme": theme,
+		"language": language,
 		"saved_game": saved_game,
 	}))

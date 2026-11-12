@@ -17,6 +17,7 @@ func _run() -> void:
 	var saved_backup := save.saved_game.duplicate(true)
 	var best_backup: int = save.best_score
 	var theme_backup: String = save.theme
+	var lang_backup: String = save.language
 	save.saved_game = {}
 
 	var menu := MenuScreen.new()
@@ -65,8 +66,18 @@ func _run() -> void:
 			_fail("theme %s did not apply" % id)
 		if not game.state.game_over and not (game.overlay is PausePanel):
 			_fail("pause panel lost after switching to %s" % id)
+	# Same for every language.
+	for lang in Strings.LANGS:
+		Lang.set_language(lang)
+		await tree.process_frame
+		await tree.process_frame
+		if Lang.code != lang:
+			_fail("language %s did not apply" % lang)
+		if not game.state.game_over and not (game.overlay is PausePanel):
+			_fail("pause panel lost after switching to %s" % lang)
 	game._close_overlay()
 	print("themes checked: %s" % ", ".join(Themes.ORDER))
+	print("languages checked: %s" % ", ".join(Strings.LANGS))
 	if moves == 0:
 		_fail("no moves were played")
 	if not game.state.game_over and not save.has_saved_game():
@@ -97,6 +108,8 @@ func _run() -> void:
 	# Put the player's real save back.
 	save.saved_game = saved_backup
 	save.best_score = best_backup
+	Lang.apply(lang_backup if lang_backup != "" else Strings.from_locale(OS.get_locale()))
+	save.language = lang_backup
 	Palette.set_theme(theme_backup) # also writes the save file
 	print("smoke test: %s" % ("OK" if errors == 0 else "%d FAILED" % errors))
 	tree.quit(1 if errors > 0 else 0)

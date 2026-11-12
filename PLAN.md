@@ -13,6 +13,7 @@
 - [x] Phase 3 — Touch controls (drag, ghost preview, return animation)
 - [x] Phase 4 — Look and identity (**Bloxo**, 4 switchable themes — Neon default, Candy, Gems, Nature — block logo, icons, Audiowide font)
 - [~] Phase 5 — Audio (generated starter sounds; music still missing)
+- [x] Languages — English, French, German, Spanish, Italian, Arabic (RTL); follows the phone, switchable in settings
 - [x] Phase 6 — Screens (splash, menu with Continue, pause, game over, auto-save/resume, safe area)
 - [ ] Phase 7 — Testing on a real phone
 - [ ] Phase 8 — Ads (optional)

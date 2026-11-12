@@ -51,8 +51,16 @@ func add_button(text: String, on_press: Callable, color: Color = Color.TRANSPARE
 
 ## A button that switches to the next theme (the screen rebuilds itself).
 func add_theme_button() -> Button:
-	var b := UIKit.button("Theme: %s" % Palette.theme_name, Vector2(640, 110), 40, Palette.accent)
+	var b := UIKit.button("%s: %s" % [Lang.t("THEME"), Palette.display_name()], Vector2(640, 110), 40, Palette.accent)
 	b.pressed.connect(func(): Palette.cycle_theme())
+	box.add_child(b)
+	return b
+
+
+## A button that switches to the next language (the screen rebuilds itself).
+func add_language_button() -> Button:
+	var b := UIKit.button("%s: %s" % [Lang.t("LANGUAGE"), Lang.language_name()], Vector2(640, 110), 40, Palette.button)
+	b.pressed.connect(func(): Lang.cycle_language())
 	box.add_child(b)
 	return b
 
@@ -60,7 +68,7 @@ func add_theme_button() -> Button:
 ## A button that flips an on/off setting stored in SaveData.
 func add_toggle(title: String, setting: String) -> Button:
 	var b := UIKit.button("", Vector2(640, 110), 40, Palette.text_dim)
-	var refresh := func(): b.text = "%s: %s" % [title, "ON" if SaveData.get(setting) else "OFF"]
+	var refresh := func(): b.text = "%s: %s" % [title, Lang.t("ON") if SaveData.get(setting) else Lang.t("OFF")]
 	refresh.call()
 	b.pressed.connect(func():
 		if not UIKit.accept_action():

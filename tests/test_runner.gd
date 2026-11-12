@@ -20,6 +20,7 @@ func _init() -> void:
 	test_save_and_restore_game()
 	test_restore_rejects_broken_data()
 	test_themes_are_complete()
+	test_translations_are_complete()
 	print("\n%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -97,7 +98,7 @@ func test_scoring() -> void:
 	check(Scoring.clear_points(16, 2, 1) == 320, "two lines = 16*10*2")
 	check(Scoring.clear_points(8, 1, 3) == 160, "combo x3 doubles")
 	check(Scoring.praise_word(1) == "", "no word for 1 line")
-	check(Scoring.praise_word(5) == "Amazing!", "word for 5 lines")
+	check(Scoring.praise_word(5) == "AMAZING", "word for 5 lines")
 
 
 func test_game_state_place_and_refill() -> void:
@@ -193,6 +194,29 @@ func test_themes_are_complete() -> void:
 			check(d.has(key), "theme %s has %s" % [id, key])
 	check(Themes.next("neon") == "candy", "next theme after neon")
 	check(Themes.next("nature") == "neon", "theme list wraps around")
+
+
+func test_translations_are_complete() -> void:
+	check(Strings.LANGS == ["en", "fr", "de", "es", "it", "ar"], "six languages")
+	for lang in Strings.LANGS:
+		check(Strings.NAMES.has(lang), "language %s has a name" % lang)
+	for key in Strings.TEXT:
+		for lang in Strings.LANGS:
+			var text = Strings.TEXT[key].get(lang)
+			check(text is String and text != "", "%s translated to %s" % [key, lang])
+		# Texts with a number placeholder must keep it in every language.
+		if "%d" in Strings.TEXT[key]["en"]:
+			for lang in Strings.LANGS:
+				check("%d" in Strings.TEXT[key][lang], "%s keeps %%d in %s" % [key, lang])
+	# Every theme name and praise word used by the game has a text.
+	for id in Themes.ORDER:
+		check(Strings.TEXT.has("THEME_" + id.to_upper()), "theme %s has a translated name" % id)
+	for n in [2, 3, 4]:
+		check(Strings.TEXT.has(Scoring.praise_word(n)), "praise word for %d lines is translated" % n)
+	check(Strings.from_locale("fr_CA") == "fr", "French phone -> French")
+	check(Strings.from_locale("ar_EG") == "ar", "Arabic phone -> Arabic")
+	check(Strings.from_locale("ja_JP") == "en", "unsupported language -> English")
+	check(Strings.next("ar") == "en", "language list wraps around")
 
 
 func test_tray_always_has_a_fitting_piece() -> void:

@@ -79,11 +79,12 @@ func _ready() -> void:
 	_build_hud()
 	get_viewport().size_changed.connect(_layout)
 	Palette.theme_changed.connect(_on_theme_changed)
+	Lang.language_changed.connect(_on_theme_changed)
 	_layout()
 	_animate_tray_in()
 
 
-## Rebuild everything that baked in the old theme's colors.
+## Rebuild everything that baked in the old theme's colors or language.
 func _on_theme_changed() -> void:
 	board_style = null
 	hud.queue_free()
@@ -162,8 +163,15 @@ func _layout() -> void:
 	tray_slot_size = Vector2(spacing, minf(bottom_safe - board_bottom, 460.0))
 
 	best_label.size = Vector2(view_size.x * 0.6, 130)
-	best_label.position = Vector2(50, top_safe)
-	pause_button.position = Vector2(view_size.x - 180, top_safe)
+	if Lang.is_rtl():
+		# Right-to-left: best score on the right, pause button on the left.
+		best_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		best_label.position = Vector2(view_size.x - best_label.size.x - 50, top_safe)
+		pause_button.position = Vector2(50, top_safe)
+	else:
+		best_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		best_label.position = Vector2(50, top_safe)
+		pause_button.position = Vector2(view_size.x - 180, top_safe)
 	score_label.size = Vector2(view_size.x, 160)
 	score_label.position = Vector2(0, board_origin.y - 220)
 
@@ -370,7 +378,7 @@ func _on_placed(result: Dictionary) -> void:
 		_update_best_label()
 	if best_at_start > 0 and state.score > best_at_start and not celebrated_best:
 		celebrated_best = true
-		_popup("New Best!", _board_center() - Vector2(0, 260), 90, Palette.accent, 0.3)
+		_popup(Lang.t("NEW_BEST"), _board_center() - Vector2(0, 260), 90, Palette.accent, 0.3)
 		Audio.play("new_best")
 
 	if result["refilled"]:
@@ -406,12 +414,12 @@ func _play_clear(result: Dictionary) -> void:
 	var center := _board_center()
 	var word := Scoring.praise_word(result["line_count"])
 	if word != "":
-		_popup(word, center - Vector2(0, 60), 120, Palette.accent)
+		_popup(Lang.t(word), center - Vector2(0, 60), 120, Palette.accent)
 	if streak >= 2:
-		_popup("Combo x%d" % streak, center + Vector2(0, 80), 76, Palette.text, 0.1)
+		_popup(Lang.t("COMBO") % streak, center + Vector2(0, 80), 76, Palette.text, 0.1)
 	_popup("+%d" % result["points"], board_origin + piece_center * cell_size, 64, Palette.text)
 	if result["board_cleared"]:
-		_popup("Board Clear!", center + Vector2(0, 200), 96, Palette.accent, 0.25)
+		_popup(Lang.t("BOARD_CLEAR"), center + Vector2(0, 200), 96, Palette.accent, 0.25)
 
 	if result["line_count"] >= 3 or streak >= 4:
 		_shake()
@@ -437,7 +445,7 @@ func _animate_tray_in() -> void:
 
 
 func _update_best_label() -> void:
-	best_label.text = "BEST  %d" % SaveData.best_score
+	best_label.text = "%s  %d" % [Lang.t("BEST"), SaveData.best_score]
 
 
 func _on_game_over() -> void:
@@ -448,7 +456,7 @@ func _on_game_over() -> void:
 	tw.tween_interval(0.5)
 	tw.tween_callback(func():
 		Audio.play("game_over")
-		_popup("No more space!", _board_center(), 90, Palette.text))
+		_popup(Lang.t("NO_SPACE"), _board_center(), 90, Palette.text))
 	tw.tween_interval(1.2)
 	tw.tween_callback(func():
 		var panel := GameOverPanel.new()

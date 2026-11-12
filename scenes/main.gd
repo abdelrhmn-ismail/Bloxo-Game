@@ -5,6 +5,7 @@ extends Node
 ## Developer options (after "--" on the command line), e.g.
 ##   godot --path . -- --theme=candy --screen=game-demo
 ##   --theme=<id>        preview a theme without saving it
+##   --lang=<code>       preview a language (en fr de es it ar) without saving it
 ##   --screen=menu|game|game-demo|pause   skip the splash and open that screen
 ##   --shot=<file.png>   save a screenshot after ~1.5 s, then quit
 
@@ -18,12 +19,15 @@ func _ready() -> void:
 	ui_layer = CanvasLayer.new()
 	add_child(ui_layer)
 	Palette.theme_changed.connect(_on_theme_changed)
+	Lang.language_changed.connect(_on_theme_changed)
 
 	var screen := ""
 	var shot := ""
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--theme="):
 			Palette.apply(arg.trim_prefix("--theme="))
+		elif arg.begins_with("--lang="):
+			Lang.apply(arg.trim_prefix("--lang="))
 		elif arg.begins_with("--screen="):
 			screen = arg.trim_prefix("--screen=")
 		elif arg.begins_with("--shot="):

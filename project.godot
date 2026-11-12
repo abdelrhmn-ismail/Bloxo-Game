@@ -28,6 +28,7 @@ config/icon="res://icon.png"
 
 SaveData="*res://autoload/save_data.gd"
 Palette="*res://autoload/palette.gd"
+Lang="*res://autoload/lang.gd"
 Audio="*res://autoload/audio.gd"
 
 [display]
