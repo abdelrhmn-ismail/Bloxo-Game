@@ -8,6 +8,9 @@ var best_score := 0
 var sound_on := true
 var music_on := true
 var vibration_on := true
+var hints_on := true
+## Set once the player finished or skipped the first-time tutorial.
+var tutorial_done := false
 ## Theme id from logic/themes.gd ("" = default theme).
 var theme := ""
 ## Language code from logic/strings.gd ("" = follow the phone's language).
@@ -37,6 +40,8 @@ func load_data() -> void:
 	sound_on = bool(data.get("sound_on", true))
 	music_on = bool(data.get("music_on", true))
 	vibration_on = bool(data.get("vibration_on", true))
+	hints_on = bool(data.get("hints_on", true))
+	tutorial_done = bool(data.get("tutorial_done", false))
 	theme = str(data.get("theme", ""))
 	language = str(data.get("language", ""))
 	var game = data.get("saved_game", {})
@@ -53,6 +58,8 @@ func write() -> void:
 		"sound_on": sound_on,
 		"music_on": music_on,
 		"vibration_on": vibration_on,
+		"hints_on": hints_on,
+		"tutorial_done": tutorial_done,
 		"theme": theme,
 		"language": language,
 		"saved_game": saved_game,

@@ -5,6 +5,7 @@ extends Control
 
 ## resume = true when the player picked "Continue".
 signal play_pressed(resume: bool)
+signal how_to_play_pressed
 
 
 func _ready() -> void:
@@ -50,6 +51,9 @@ func _ready() -> void:
 	var lang_btn := _wide_button("%s: %s" % [Lang.t("LANGUAGE"), Lang.language_name()], Palette.button)
 	lang_btn.pressed.connect(func(): Lang.cycle_language())
 	box.add_child(lang_btn)
+	var help_btn := _wide_button(Lang.t("HOW_TO_PLAY"), Palette.text_dim)
+	help_btn.pressed.connect(func(): how_to_play_pressed.emit())
+	box.add_child(help_btn)
 
 	Audio.play_music()
 

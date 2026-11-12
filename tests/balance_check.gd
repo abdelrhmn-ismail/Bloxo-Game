@@ -1,6 +1,6 @@
 extends SceneTree
-## Difficulty check (not a pass/fail test): a simple "smart" player that
-## prefers clearing lines and avoids leaving holes plays many games, and
+## Difficulty check (not a pass/fail test): the Hint "smart" player
+## (logic/hint.gd) plays many games, and
 ## we print how long games last and the scores reached.
 ##   godot --headless --path . -s tests/balance_check.gd
 
@@ -16,20 +16,8 @@ func _init() -> void:
 		var gs := GameState.new(1000 + g)
 		var moves := 0
 		while not gs.game_over and moves < MAX_MOVES:
-			var best_move := []
-			var best_value := -INF
-			for slot in gs.tray.size():
-				if gs.tray[slot] == null:
-					continue
-				var shape: Array = gs.tray[slot]["shape"]
-				for row in Board.SIZE:
-					for col in Board.SIZE:
-						if gs.board.can_place(shape, col, row):
-							var v := _value(gs.board, shape, col, row)
-							if v > best_value:
-								best_value = v
-								best_move = [slot, col, row]
-			gs.try_place(best_move[0], best_move[1], best_move[2])
+			var m := Hint.best_move(gs)
+			gs.try_place(m["slot"], m["col"], m["row"])
 			moves += 1
 		if moves >= MAX_MOVES:
 			capped += 1
@@ -63,36 +51,3 @@ func _dump(gs: GameState, seed_value: int, moves: int) -> void:
 					line += "X" if p["shape"].has(Vector2i(x, y)) else "."
 				rows.append(line)
 			print("  piece: " + " / ".join(rows))
-
-
-## Higher is better: lines cleared, few isolated holes, touching neighbours.
-func _value(board: Board, shape: Array, col: int, row: int) -> float:
-	# Contact: edges of the new piece touching walls or existing blocks
-	# (real players stack pieces together instead of scattering them).
-	var contact := 0
-	for p in shape:
-		var cell: Vector2i = Vector2i(col, row) + p
-		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var n: Vector2i = cell + d
-			if shape.has(n - Vector2i(col, row)):
-				continue
-			if not board.is_inside(n.x, n.y) or board.get_cell(n.x, n.y) != Board.EMPTY:
-				contact += 1
-	var b := board.duplicate_board()
-	b.place(shape, col, row, 0)
-	var lines := b.find_full_lines()
-	var cleared: int = lines["rows"].size() + lines["cols"].size()
-	b.clear_lines(lines)
-	var holes := 0
-	for r in Board.SIZE:
-		for c in Board.SIZE:
-			if b.get_cell(c, r) != Board.EMPTY:
-				continue
-			var blocked := 0
-			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-				var n: Vector2i = Vector2i(c, r) + d
-				if not b.is_inside(n.x, n.y) or b.get_cell(n.x, n.y) != Board.EMPTY:
-					blocked += 1
-			if blocked >= 3:
-				holes += 1
-	return cleared * 100.0 - holes * 25.0 - b.filled_count() * 2.0 + contact * 6.0

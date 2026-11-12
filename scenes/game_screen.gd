@@ -11,12 +11,27 @@ const LIFT_CELLS := 0.9
 const TRAY_SCALE := 0.55
 ## How far (game units) the finger must move before it counts as a drag.
 const DRAG_THRESHOLD := 24.0
+## Seconds without touching the screen before a hint appears.
+const HINT_DELAY := 8.0
+## Length of one animated-hand demonstration (seconds).
+const GUIDE_CYCLE := 1.8
 
 var state := GameState.new()
 ## Set by Main before adding the screen: continue the saved game?
 var resume_saved := false
 ## Developer option: auto-play this many moves at start (for screenshots).
 var demo_moves := 0
+## Set by Main: play the 3-step tutorial before the real game.
+var tutorial := false
+
+# --- tutorial / hints ---
+var tutorial_step := 0 # 0 = off, 1 = drag a piece, 2 = clear a line
+var tutorial_text_key := ""
+var tutorial_kept_save := false # started from "How to play" with a game to continue
+var guide_slot := -1 # tray piece the animated hand demonstrates (-1 = none)
+var guide_cell := Vector2i(-1, -1) # where it should go (top-left cell)
+var hint_active := false
+var idle_time := 0.0
 
 # --- layout (recomputed when the screen size changes) ---
 var view_size := Vector2.ZERO
@@ -54,12 +69,17 @@ var hud: Control
 var score_label: Label
 var best_label: Label
 var pause_button: Button
+var tutorial_label: Label
+var skip_button: Button
 var overlay: OverlayPanel
 var board_style: StyleBoxFlat
 
 
 func _ready() -> void:
-	if resume_saved and SaveData.has_saved_game():
+	if tutorial:
+		# Keep any unfinished game; the tutorial uses its own boards.
+		tutorial_kept_save = SaveData.has_saved_game()
+	elif resume_saved and SaveData.has_saved_game():
 		if not state.from_dict(SaveData.saved_game) or state.game_over:
 			# Broken or finished save: start fresh and forget it, so the
 			# menu doesn't keep offering "Continue" for it.
@@ -88,6 +108,8 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_layout)
 	Palette.theme_changed.connect(_on_theme_changed)
 	Lang.language_changed.connect(_on_theme_changed)
+	if tutorial:
+		_tutorial_setup(1)
 	_layout()
 	_animate_tray_in()
 
@@ -119,8 +141,9 @@ func _play_demo_moves(count: int) -> void:
 			state.new_game()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	score_label.text = str(roundi(displayed_score))
+	_update_hint(delta)
 	queue_redraw()
 
 
@@ -145,6 +168,30 @@ func _build_hud() -> void:
 	pause_button = UIKit.button("II", Vector2(130, 130), 56)
 	pause_button.pressed.connect(_open_pause)
 	hud.add_child(pause_button)
+
+	# Tutorial: instruction text above the board + a Skip button.
+	tutorial_label = UIKit.label("", 54, Palette.text)
+	tutorial_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# Give it its real width BEFORE any text is set: a wrapping label with
+	# no width puts every word on its own line and grows very tall.
+	tutorial_label.size = Vector2(get_viewport_rect().size.x - 100, 200)
+	hud.add_child(tutorial_label)
+	skip_button = UIKit.button(Lang.t("SKIP"), Vector2(260, 110), 40, Palette.text_dim)
+	skip_button.pressed.connect(_finish_tutorial)
+	hud.add_child(skip_button)
+	_refresh_hud_mode()
+
+
+## Shows either the normal HUD or the tutorial HUD.
+func _refresh_hud_mode() -> void:
+	var in_tutorial := tutorial_step > 0
+	score_label.visible = not in_tutorial
+	best_label.visible = not in_tutorial
+	pause_button.visible = not in_tutorial
+	tutorial_label.visible = in_tutorial
+	skip_button.visible = in_tutorial
+	if in_tutorial:
+		tutorial_label.text = Lang.t(tutorial_text_key)
 
 
 func _layout() -> void:
@@ -182,6 +229,11 @@ func _layout() -> void:
 		pause_button.position = Vector2(view_size.x - 180, top_safe)
 	score_label.size = Vector2(view_size.x, 160)
 	score_label.position = Vector2(0, board_origin.y - 220)
+	tutorial_label.size = Vector2(view_size.x - 100, 200)
+	tutorial_label.position = Vector2(50, board_origin.y - 240)
+	# Long words (e.g. German "Überspringen") make the button wider.
+	var skip_w := maxf(skip_button.size.x, skip_button.get_combined_minimum_size().x)
+	skip_button.position = Vector2(50 if Lang.is_rtl() else view_size.x - 50 - skip_w, top_safe)
 
 
 func _cell_rect(col: int, row: int) -> Rect2:
@@ -204,6 +256,8 @@ func _draw() -> void:
 	_draw_tray()
 	if drag_slot != -1:
 		_draw_dragged()
+	elif overlay == null:
+		_draw_guide()
 
 
 func _draw_board() -> void:
@@ -269,7 +323,7 @@ func _draw_dragged() -> void:
 	_draw_piece(piece, center, cell_size * drag_scale)
 
 
-func _draw_piece(piece: Dictionary, center: Vector2, csize: float) -> void:
+func _draw_piece(piece: Dictionary, center: Vector2, csize: float, alpha: float = 1.0) -> void:
 	if csize <= 1.0:
 		return
 	var b := Vector2(Shapes.bounds(piece["shape"]))
@@ -279,7 +333,45 @@ func _draw_piece(piece: Dictionary, center: Vector2, csize: float) -> void:
 	for p in piece["shape"]:
 		var rect := Rect2(origin + Vector2(p) * csize + Vector2(gap, gap) * 0.5,
 			Vector2(csize - gap, csize - gap))
-		CellPainter.draw_cell(self, rect, color)
+		CellPainter.draw_cell(self, rect, color, alpha)
+
+
+## Animated hand showing a piece moving from the tray to guide_cell
+## (tutorial steps and idle hints), plus a pulsing shadow at the target.
+func _draw_guide() -> void:
+	if guide_slot < 0 or guide_slot >= state.tray.size() or state.tray[guide_slot] == null:
+		return
+	var piece: Dictionary = state.tray[guide_slot]
+	var t := Time.get_ticks_msec() / 1000.0
+	var color: Color = Palette.piece_colors[piece["color"]]
+
+	# Pulsing shadow where the piece should go.
+	var glow := 0.3 + 0.25 * sin(t * 5.0)
+	for p in piece["shape"]:
+		var cell: Vector2i = guide_cell + p
+		CellPainter.draw_cell(self, _cell_rect(cell.x, cell.y), color, glow)
+
+	# Hand path: tray → above the target (same lift as a real drag).
+	var b := Vector2(Shapes.bounds(piece["shape"]))
+	var start: Vector2 = tray_centers[guide_slot]
+	var target_top_left := board_origin + Vector2(guide_cell) * cell_size
+	var finger := target_top_left + Vector2(b.x * 0.5, b.y + LIFT_CELLS) * cell_size
+	var phase := fmod(t, GUIDE_CYCLE) / GUIDE_CYCLE
+	var move := smoothstep(0.15, 0.75, phase)
+	var fade := minf(smoothstep(0.0, 0.1, phase), 1.0 - smoothstep(0.85, 1.0, phase))
+	var pos := start.lerp(finger, move)
+
+	# Ghost of the piece being carried (appears once the hand starts
+	# moving, so it doesn't overlap the piece still in the tray).
+	var csize := lerpf(cell_size * TRAY_SCALE, cell_size, move)
+	var carried_center := pos - Vector2(0, (b.y * 0.5 + LIFT_CELLS) * csize)
+	_draw_piece(piece, carried_center, csize, 0.6 * fade * smoothstep(0.0, 0.3, move))
+
+	# The "finger": a soft disc with a ring.
+	var r := cell_size * 0.32
+	draw_circle(pos, r * 1.25, Color(Palette.accent, 0.25 * fade))
+	draw_circle(pos, r, Color(1, 1, 1, 0.85 * fade))
+	draw_arc(pos, r, 0, TAU, 32, Color(Palette.accent, fade), maxf(2.0, r * 0.18), true)
 
 
 # =====================================================================
@@ -291,6 +383,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventScreenTouch and event.index == 0:
 		if event.pressed:
+			_clear_hint()
 			_try_pick(event.position)
 		elif drag_slot != -1:
 			_drop()
@@ -319,6 +412,30 @@ func _try_pick(pos: Vector2) -> void:
 			_update_ghost()
 			Audio.play("pick")
 			return
+
+
+## Idle hints: after HINT_DELAY seconds without touching, show the best
+## move (logic/hint.gd) with the animated hand.
+func _update_hint(delta: float) -> void:
+	var can_hint := SaveData.hints_on and tutorial_step == 0 and overlay == null \
+		and not state.game_over and drag_slot == -1
+	if not can_hint:
+		idle_time = 0.0
+		return
+	idle_time += delta
+	if idle_time >= HINT_DELAY and not hint_active:
+		var m := Hint.best_move(state)
+		if not m.is_empty():
+			hint_active = true
+			guide_slot = m["slot"]
+			guide_cell = Vector2i(m["col"], m["row"])
+
+
+func _clear_hint() -> void:
+	idle_time = 0.0
+	if hint_active:
+		hint_active = false
+		guide_slot = -1
 
 
 ## Top-left corner of the dragged piece (it floats above the finger).
@@ -388,6 +505,11 @@ func _on_placed(result: Dictionary) -> void:
 	if result["line_count"] > 0:
 		_play_clear(result)
 
+	_clear_hint()
+	if tutorial_step > 0:
+		_tutorial_after_move(result)
+		return
+
 	create_tween().tween_property(self, "displayed_score", float(state.score), 0.35)
 
 	if state.score > SaveData.best_score:
@@ -426,7 +548,10 @@ func _play_clear(result: Dictionary) -> void:
 
 	var streak: int = result["streak"]
 	Audio.play("clear", 1.0 + 0.08 * mini(streak - 1, 8))
-	Audio.vibrate(40)
+	# Bigger clears and longer combos shake the phone longer and harder.
+	var lines: int = result["line_count"]
+	var power := clampi((lines - 1) + (streak - 1), 0, 6)
+	Audio.vibrate(40 + power * 25, lerpf(0.5, 1.0, power / 6.0))
 
 	var center := _board_center()
 	var word := Scoring.praise_word(result["line_count"])
@@ -487,11 +612,95 @@ func _show_game_over_panel(is_new_best: bool) -> void:
 
 
 # =====================================================================
+# Tutorial (3 steps: drag a piece → clear a line → how the game ends)
+# =====================================================================
+
+func _tutorial_piece(pattern: String, color: int) -> Dictionary:
+	return {"shape": Shapes.parse(pattern), "color": color}
+
+
+func _tutorial_setup(step: int) -> void:
+	if not tutorial:
+		return # skipped while a step change was pending
+	tutorial_step = step
+	state.board.reset()
+	state.score = 0
+	state.streak = 0
+	state.moves_since_clear = 0
+	state.game_over = false
+	if step == 1:
+		# Step 1: just drag the square onto the board.
+		state.tray = [null, _tutorial_piece("XX\nXX", 4), null]
+		guide_cell = Vector2i(3, 3)
+		tutorial_text_key = "TUT_DRAG"
+	else:
+		# Step 2: a row with a 3-cell gap and the exact piece to fill it.
+		var colors := [0, 1, 2, 5, 6]
+		var k := 0
+		for c in Board.SIZE:
+			if c < 2 or c > 4:
+				state.board.set_cell(c, 5, colors[k % colors.size()])
+				k += 1
+		state.tray = [null, _tutorial_piece("XXX", 3), null]
+		guide_cell = Vector2i(2, 5)
+		if tutorial_text_key != "TUT_TRY_AGAIN":
+			tutorial_text_key = "TUT_CLEAR"
+	guide_slot = 1
+	_refresh_hud_mode()
+	_animate_tray_in()
+
+
+func _tutorial_after_move(result: Dictionary) -> void:
+	# The rules refilled the tray with random pieces; hide them.
+	state.tray = [null, null, null]
+	state.game_over = false
+	guide_slot = -1
+	var tw := create_tween()
+	tw.tween_interval(0.7)
+	if tutorial_step == 1:
+		tw.tween_callback(_tutorial_setup.bind(2))
+	elif result["line_count"] > 0:
+		tw.tween_callback(_tutorial_show_end)
+	else:
+		tutorial_text_key = "TUT_TRY_AGAIN"
+		_refresh_hud_mode()
+		tw.tween_callback(_tutorial_setup.bind(2))
+
+
+func _tutorial_show_end() -> void:
+	if not tutorial:
+		return
+	var panel := OverlayPanel.new()
+	panel.add_text(Lang.t("TUT_END"), 56, Palette.text)
+	panel.add_button(Lang.t("TUT_START"), _finish_tutorial, Palette.button_primary)
+	_show_overlay(panel)
+
+
+## Ends (or skips) the tutorial and starts the real game.
+func _finish_tutorial() -> void:
+	if tutorial_step == 0 and not tutorial:
+		return
+	tutorial = false
+	tutorial_step = 0
+	guide_slot = -1
+	SaveData.tutorial_done = true
+	SaveData.write()
+	_close_overlay()
+	if tutorial_kept_save:
+		# Opened from "How to play" while a game was in progress: go back
+		# to the menu so it can still be continued.
+		exit_to_menu.emit()
+		return
+	_refresh_hud_mode()
+	_restart()
+
+
+# =====================================================================
 # Pause / restart
 # =====================================================================
 
 func _open_pause() -> void:
-	if overlay != null or state.game_over:
+	if overlay != null or state.game_over or tutorial_step > 0:
 		return
 	drag_slot = -1
 	has_ghost = false
@@ -529,12 +738,15 @@ func _restart() -> void:
 	drag_slot = -1
 	return_slot = -1
 	pulse = 0.0
+	_clear_hint()
 	_animate_tray_in()
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
-		if overlay is PausePanel:
+		if tutorial_step > 0 or tutorial:
+			_finish_tutorial()
+		elif overlay is PausePanel:
 			_close_overlay()
 		elif overlay == null:
 			_open_pause()

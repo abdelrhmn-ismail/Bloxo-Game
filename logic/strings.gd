@@ -92,6 +92,31 @@ const TEXT := {
 		"es": "¡Tablero limpio!", "it": "Tavola pulita!", "ar": "اللوحة فارغة!"},
 	"NO_SPACE": {"en": "No more space!", "fr": "Plus de place !", "de": "Kein Platz mehr!",
 		"es": "¡Sin espacio!", "it": "Spazio finito!", "ar": "لا توجد مساحة!"},
+
+	# --- tutorial / hints ---
+	"HOW_TO_PLAY": {"en": "How to play", "fr": "Comment jouer", "de": "Anleitung",
+		"es": "Cómo jugar", "it": "Come si gioca", "ar": "طريقة اللعب"},
+	"TUT_DRAG": {"en": "Drag the piece onto the board", "fr": "Fais glisser la pièce sur le plateau",
+		"de": "Ziehe das Teil auf das Spielfeld", "es": "Arrastra la pieza al tablero",
+		"it": "Trascina il pezzo sul tabellone", "ar": "اسحب القطعة إلى اللوحة"},
+	"TUT_CLEAR": {"en": "Fill a whole row or column to clear it", "fr": "Remplis une ligne ou une colonne pour la vider",
+		"de": "Fülle eine Reihe oder Spalte, um sie zu leeren", "es": "Llena una fila o columna para borrarla",
+		"it": "Riempi una riga o colonna per eliminarla", "ar": "املأ صفًا أو عمودًا كاملًا ليختفي"},
+	"TUT_TRY_AGAIN": {"en": "Almost! Fill the gap in the row", "fr": "Presque ! Remplis le trou de la ligne",
+		"de": "Fast! Fülle die Lücke in der Reihe", "es": "¡Casi! Llena el hueco de la fila",
+		"it": "Quasi! Riempi il buco nella riga", "ar": "قربت! املأ الفراغ في الصف"},
+	"TUT_END": {"en": "The game ends when no piece fits.\nGood luck!",
+		"fr": "La partie se termine quand\nplus aucune pièce ne rentre.\nBonne chance !",
+		"de": "Das Spiel endet, wenn\nkein Teil mehr passt.\nViel Glück!",
+		"es": "El juego termina cuando\nninguna pieza cabe.\n¡Suerte!",
+		"it": "La partita finisce quando\nnessun pezzo entra.\nBuona fortuna!",
+		"ar": "تنتهي اللعبة عندما\nلا تجد القطع مكانًا.\nبالتوفيق!"},
+	"TUT_START": {"en": "Start", "fr": "Commencer", "de": "Los geht's",
+		"es": "Empezar", "it": "Inizia", "ar": "ابدأ"},
+	"SKIP": {"en": "Skip", "fr": "Passer", "de": "Überspringen",
+		"es": "Saltar", "it": "Salta", "ar": "تخطي"},
+	"HINTS": {"en": "Hints", "fr": "Indices", "de": "Tipps",
+		"es": "Pistas", "it": "Suggerimenti", "ar": "التلميحات"},
 }
 
 

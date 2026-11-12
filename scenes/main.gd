@@ -6,7 +6,7 @@ extends Node
 ##   godot --path . -- --theme=candy --screen=game-demo
 ##   --theme=<id>        preview a theme without saving it
 ##   --lang=<code>       preview a language (en fr de es it ar) without saving it
-##   --screen=menu|game|game-demo|pause|gameover   skip the splash and open that screen
+##   --screen=menu|game|game-demo|pause|gameover|tutorial|hint   skip the splash and open that screen
 ##   --shot=<file.png>   save a screenshot after ~1.5 s, then quit
 
 var current: Node
@@ -45,6 +45,11 @@ func _ready() -> void:
 		"gameover":
 			show_game(false, 12)
 			current.call_deferred("_show_game_over_panel", true)
+		"tutorial":
+			show_game(false, 0, true)
+		"hint":
+			show_game(false, 12)
+			current.set("idle_time", 100.0) # show the hint right away
 		_:
 			show_splash()
 	if shot != "":
@@ -68,14 +73,21 @@ func show_splash() -> void:
 
 func show_menu() -> void:
 	var menu := MenuScreen.new()
-	menu.play_pressed.connect(show_game)
+	menu.play_pressed.connect(_on_play_pressed)
+	menu.how_to_play_pressed.connect(show_game.bind(false, 0, true))
 	_switch_to(menu)
 
 
-func show_game(resume: bool = false, demo_moves: int = 0) -> void:
+## First new game ever starts with the tutorial.
+func _on_play_pressed(resume: bool) -> void:
+	show_game(resume, 0, not resume and not SaveData.tutorial_done)
+
+
+func show_game(resume: bool = false, demo_moves: int = 0, tutorial: bool = false) -> void:
 	var game := GameScreen.new()
 	game.resume_saved = resume
 	game.demo_moves = demo_moves
+	game.tutorial = tutorial
 	game.exit_to_menu.connect(show_menu)
 	_switch_to(game)
 

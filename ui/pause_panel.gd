@@ -17,3 +17,4 @@ func _init() -> void:
 	add_toggle(Lang.t("SOUND"), "sound_on")
 	add_toggle(Lang.t("MUSIC"), "music_on")
 	add_toggle(Lang.t("VIBRATION"), "vibration_on")
+	add_toggle(Lang.t("HINTS"), "hints_on")
