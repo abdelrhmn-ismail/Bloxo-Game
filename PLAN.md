@@ -1,257 +1,234 @@
-# 🎮 Bloxo — الخطة الكاملة (Godot 4 → جوجل بلاي)
+# 🎮 Bloxo — Full Plan (Godot 4 → Google Play)
 
-> **قاعدة مهمة:** مش هنستخدم أي صورة أو صوت أو كود من اللعبة القديمة (فولدر `color block`).
-> كل حاجة هنا جديدة وبتاعتك، والاسم والشكل لازم يكونوا مختلفين عن Color Block.
-
----
-
-## ✅ متابعة التقدم
-
-- [x] المرحلة 0 — فولدر المشروع والإعدادات
-- [x] المرحلة 1 — هيكل المشروع
-- [x] المرحلة 2 — قواعد اللعبة (الشبكة، القطع، المسح، السكور، Game Over) + اختبارات
-- [x] المرحلة 3 — التحكم باللمس (سحب، ظل، رجوع القطعة)
-- [~] المرحلة 4 — الشكل والهوية (فيه ثيم مبدئي بالكود — محتاجين اسمك وألوانك)
-- [~] المرحلة 5 — الأصوات (فيه أصوات مبدئية متولدة — تقدر تبدلها)
-- [~] المرحلة 6 — الشاشات (قائمة، إيقاف، Game Over جاهزين — باقي حفظ اللعبة الجارية)
-- [ ] المرحلة 7 — الاختبار على موبايلك
-- [ ] المرحلة 8 — الإعلانات (اختياري)
-- [ ] المرحلة 9 — التصدير لأندرويد (AAB)
-- [ ] المرحلة 10 — الرفع على جوجل بلاي
-- [ ] المرحلة 11 — ما بعد النشر
+> **Rule:** no images, sounds or code from any other game. Everything here is original,
+> and the name and look must stay clearly different from existing block puzzle games.
 
 ---
 
-## 👥 مين بيعمل إيه؟
+## ✅ Progress
 
-| أنا (Claude) | إنت |
-|---|---|
-| أكتب كل الكود (GDScript) | تنزّل البرامج |
-| أعمل كل المشاهد والفولدرات | تفتح المشروع وتدوس ▶️ تجرّب |
-| أربط الصور والأصوات باللعبة | تختار/تصمم الصور والأصوات |
-| أصلّح أي خطأ | تبعتلي أي مشكلة أو رسالة خطأ |
-| أشرحلك التصدير والرفع خطوة بخطوة | تعمل حساب جوجل بلاي وترفع |
-
----
-
-## 📦 المرحلة 0 — التجهيز
-
-**تنزّل:**
-1. **Godot 4** (Standard — مش .NET) من https://godotengine.org/download
-2. **JDK 17** (للتصدير لأندرويد بعدين)
-3. **Android Studio** (عشان الـ Android SDK بس)
-
-**إعدادات المشروع (معمولة في `project.godot`):**
-- شاشة طولية، المقاس الأساسي 1080×1920
-- `stretch mode = canvas_items` + `aspect = expand` → تظبط على كل الموبايلات
-- الماوس بيتحول للمس → تقدر تجرب على الكمبيوتر
-- زرار Back في أندرويد مبيقفلش اللعبة فجأة (بيفتح الإيقاف)
+- [x] Phase 0 — Project folder and settings
+- [x] Phase 1 — Project structure
+- [x] Phase 2 — Game rules (board, pieces, clearing, scoring, game over) + tests
+- [x] Phase 3 — Touch controls (drag, ghost preview, return animation)
+- [~] Phase 4 — Look and identity (name chosen: **Bloxo**; theme still to pick)
+- [~] Phase 5 — Audio (generated starter sounds; music still missing)
+- [~] Phase 6 — Screens (menu, pause, game over done; resume-saved-game pending)
+- [ ] Phase 7 — Testing on a real phone
+- [ ] Phase 8 — Ads (optional)
+- [ ] Phase 9 — Android export (AAB)
+- [ ] Phase 10 — Google Play release
+- [ ] Phase 11 — After launch
 
 ---
 
-## 🗂️ المرحلة 1 — هيكل المشروع
+## 📦 Phase 0 — Setup
+
+**Install:**
+1. **Godot 4** (Standard, not .NET) — https://godotengine.org/download
+2. **JDK 17** (for Android export later)
+3. **Android Studio** (only for the Android SDK)
+
+**Project settings (in `project.godot`):**
+- Portrait, base resolution 1080×1920
+- `stretch mode = canvas_items` + `aspect = expand` → fits every phone
+- Mouse emulates touch → playable on desktop
+- Android Back button opens Pause instead of quitting
+
+---
+
+## 🗂️ Phase 1 — Structure
 
 ```
 bloxo/
-├── project.godot            ← إعدادات المشروع (اسم اللعبة هنا)
-├── PLAN.md                  ← الخطة دي
-├── README.md                ← إزاي تشغّل وتجرب
-├── autoload/                ← حاجات شغالة طول اللعبة
-│   ├── palette.gd           ← 🎨 كل الألوان في مكان واحد
-│   ├── save_data.gd         ← أعلى سكور + الإعدادات
-│   └── audio.gd             ← الأصوات والموسيقى والاهتزاز
-├── logic/                   ← "عقل" اللعبة (من غير رسم)
-│   ├── board.gd             ← الشبكة، الوضع، المسح
-│   ├── shapes.gd            ← أشكال القطع (مرسومة بـ X و .)
-│   ├── piece_generator.gd   ← اختيار القطع بذكاء
-│   ├── scoring.gd           ← حساب النقاط
-│   └── game_state.gd        ← حالة اللعبة كلها
+├── project.godot            ← project settings (game name here)
+├── PLAN.md                  ← this plan
+├── README.md                ← how to run
+├── autoload/
+│   ├── palette.gd           ← 🎨 all colors in one place
+│   ├── save_data.gd         ← best score + settings
+│   └── audio.gd             ← sounds, music, vibration
+├── logic/                   ← game rules (no drawing)
+│   ├── board.gd             ← grid, placing, clearing
+│   ├── shapes.gd            ← piece shapes (drawn with X and .)
+│   ├── piece_generator.gd   ← fair random pieces
+│   ├── scoring.gd           ← point rules
+│   └── game_state.gd        ← whole game state
 ├── scenes/
-│   ├── main.tscn / main.gd  ← بيتنقل بين الشاشات
-│   ├── menu_screen.gd       ← شاشة البداية
-│   ├── game_screen.gd       ← شاشة اللعب (رسم + سحب)
-│   └── background.gd        ← الخلفية
-├── ui/
-│   ├── ui_kit.gd            ← أزرار ونصوص جاهزة
-│   ├── overlay_panel.gd     ← أساس النوافذ
-│   ├── pause_panel.gd
-│   ├── game_over_panel.gd
-│   └── logo_blocks.gd       ← لوجو بلوكات صغير
-├── effects/
-│   ├── cell_painter.gd      ← رسم الخانة (لون + لمعة + ظل)
-│   ├── clear_effect.gd      ← انفجار الخانة لما تتمسح
-│   └── popup_text.gd        ← "Great!" و "Combo x3"
+│   ├── main.tscn / main.gd  ← switches screens
+│   ├── menu_screen.gd
+│   ├── game_screen.gd       ← drawing + dragging
+│   └── background.gd
+├── ui/                      ← UI kit, pause / game over panels, logo
+├── effects/                 ← block painter, clear effect, popup text
 ├── assets/images | sounds | fonts
-├── tests/test_runner.gd     ← اختبارات قواعد اللعبة
-└── tools/make_sounds.py     ← بيولّد أصوات مبدئية
+├── tests/test_runner.gd
+└── tools/make_sounds.py
 ```
 
-**ليه بنفصل `logic` عن `scenes`؟** نفس فكرة فصل الـ backend عن الـ frontend:
-بنختبر قواعد اللعبة لوحدها، فالأخطاء تقل جدًا.
+Logic is separated from scenes (like backend vs frontend) so the rules can be tested on their own.
 
 ---
 
-## 🧠 المرحلة 2 — قواعد اللعبة
+## 🧠 Phase 2 — Game rules
 
-### الشبكة `board.gd`
-- 8×8 — كل خانة: `-1` فاضية، أو `0..7` رقم اللون
+### Board `board.gd`
+- 8×8, each cell is `-1` (empty) or a color index `0..7`
 - `can_place` / `place` / `find_full_lines` / `clear_lines` / `can_fit_anywhere` / `lines_if_placed`
 
-### الأشكال `shapes.gd`
-مكتوبة كرسم — `X` خانة مليانة و `.` فاضية:
+### Shapes `shapes.gd`
+Shapes are drawn as text — `X` filled, `.` empty:
 ```
-"X..\nX..\nXXX"   ← L كبير
+"X..\nX..\nXXX"   ← big corner
 ```
-عايز تضيف شكل؟ ارسمه وضيفه للقائمة. خلاص.
+To add a shape, draw it and add it to the list.
 
-### توليد القطع `piece_generator.gd`
-- 3 قطع كل دور، ولما تخلصهم ييجي 3 جداد
-- في الأول القطع الصغيرة أكتر، وكل ما السكور يزيد الكبيرة تزيد
-- على الأقل قطعة واحدة من الـ3 ليها مكان (مفيش خسارة ظلم)
+### Piece generator `piece_generator.gd`
+- 3 pieces per round; a new set arrives when all 3 are used
+- Small pieces are more common early; big pieces grow with the score
+- At least one of the 3 always fits (no unfair losses)
 
-### السكور `scoring.gd`
-| الحدث | النقاط |
+### Scoring `scoring.gd`
+| Event | Points |
 |---|---|
-| وضع قطعة | عدد خاناتها |
-| مسح خطوط | عدد الخانات الممسوحة × 10 × عدد الخطوط |
-| كومبو (مسح ورا مسح) | + نص النقاط عن كل مستوى كومبو |
-| الشبكة فضيت خالص | +300 🎉 |
+| Place a piece | number of its cells |
+| Clear lines | cleared cells × 10 × number of lines |
+| Combo (clears in a row) | +50% per combo level |
+| Whole board cleared | +300 🎉 |
 
-الكومبو بيستمر طول ما بتمسح حاجة كل 3 قطع على الأقل.
+The combo stays alive while you clear at least once every 3 pieces.
 
-### نهاية اللعبة
-بعد كل قطعة: لو مفيش ولا قطعة باقية ليها مكان → Game Over ونحفظ أعلى سكور.
-
----
-
-## 👆 المرحلة 3 — التحكم باللمس
-- تلمس القطعة → تكبر وتطلع **فوق صباعك** (عشان متتغطاش)
-- ظل شفاف على الشبكة في المكان اللي هتنزل فيه
-- الصفوف اللي هتكمل بتتلوّن بلون القطعة قبل ما تسيب
-- مكان غلط → القطعة ترجع مكانها بأنيميشن
-- اهتزاز خفيف (ممكن تقفله من الإعدادات)
+### Game over
+After every move: if none of the remaining pieces fit → game over, best score saved.
 
 ---
 
-## 🎨 المرحلة 4 — الشكل والهوية (محتاجين قراراتك)
+## 👆 Phase 3 — Touch controls
+- Touching a piece enlarges it and lifts it **above the finger**
+- A transparent ghost shows where it will land
+- Lines that would be cleared light up in the piece's color before release
+- Invalid spot → piece flies back to the tray
+- Light vibration (can be turned off)
 
-1. **اسم اللعبة** — اقتراحات: *Gem Drop*، *Block Bloom*، *Tile Burst*، *Cube Garden*
-   (بيتغير من `project.godot` → `config/name`)
-2. **الثيم:** 💎 جواهر / 🍬 حلويات / 🌿 طبيعة / 🌌 نيون
-3. **الألوان:** كلها في `autoload/palette.gd` — زي CSS variables
-4. **الصور (لما نحب نبدل الرسم بالكود بصور):**
+---
 
-| الصورة | المقاس | ملاحظة |
+## 🎨 Phase 4 — Look and identity
+
+1. **Name:** **Bloxo** ✅ (store title: *Bloxo: Block Puzzle*)
+2. **Theme:** 🌌 neon / 🍬 candy / 💎 gems / 🌿 nature — *to decide*
+3. **Colors:** all in `autoload/palette.gd`
+4. **Images (when replacing the code-drawn look):**
+
+| Image | Size | Notes |
 |---|---|---|
-| خانة القطعة | 128×128 | صورة **رمادي/أبيض** واحدة ونلونها بالكود |
-| خلفية | 1080×1920 | أو تدرج بالكود (الحالي) |
-| أزرار | 128×128 | |
-| لوجو | 800×300 | |
-| أيقونة التطبيق | 512×512 + Adaptive | |
+| Block cell | 128×128 | one **gray/white** image, tinted in code |
+| Background | 1080×1920 | or the current code gradient |
+| Buttons | 128×128 | |
+| Logo | 800×300 | |
+| App icon | 512×512 + adaptive | |
 
-**مصادر مجانية وقانونية:** Kenney.nl (CC0)، أو Figma/Inkscape.
+**Free legal sources:** Kenney.nl (CC0), or design in Figma/Inkscape.
 
-**الإحساس (Juice):** القطعة تنور لما تتحط ✅، الخانات تنفجر بجزيئات ✅، كلام تشجيع ✅،
-السكور بيعد ✅، الشاشة تهتز في الكومبو الكبير ✅.
+**Juice:** placement flash ✅, clear particles ✅, praise words ✅, counting score ✅, screen shake ✅.
 
 ---
 
-## 🔊 المرحلة 5 — الأصوات
+## 🔊 Phase 5 — Audio
 
-| الملف (في `assets/sounds/`) | امتى |
+| File (`assets/sounds/`) | When |
 |---|---|
-| `pick.wav` | تمسك قطعة |
-| `place.wav` | تحطها |
-| `invalid.wav` | ترجع مكانها |
-| `clear.wav` | مسح (النغمة بتعلى مع الكومبو) |
-| `new_best.wav` | رقم قياسي |
-| `game_over.wav` | الخسارة |
-| `click.wav` | الأزرار |
-| `music.ogg` | موسيقى خلفية (لسه — اختار من Pixabay Music) |
+| `pick.wav` | pick up a piece |
+| `place.wav` | place it |
+| `invalid.wav` | piece returns |
+| `clear.wav` | clear (pitch rises with combo) |
+| `new_best.wav` | new best score |
+| `game_over.wav` | game over |
+| `click.wav` | buttons |
+| `music.ogg` | background music (todo — e.g. Pixabay Music) |
 
-- الأصوات الحالية متولدة بـ `tools/make_sounds.py` (أصلية 100%)
-- عايز تبدل؟ حط ملف **بنفس الاسم** مكان القديم. خلاص.
-- مصادر: **jsfxr.me**، **Kenney.nl**، **Pixabay Music**
-
----
-
-## 📱 المرحلة 6 — الشاشات
-- ✅ القائمة: اللوجو، Play، أعلى سكور، الصوت/الموسيقى/الاهتزاز
-- ✅ اللعب: السكور، أعلى سكور، زرار إيقاف
-- ✅ الإيقاف: كمّل / من جديد / الرئيسية + الإعدادات
-- ✅ Game Over: السكور، "NEW BEST!"، العب تاني
-- ⏳ حفظ اللعبة الجارية (تقفل التطبيق وترجع تكمل)
-- ⏳ Splash بشعارك
-- ⏳ مساحة الـ Notch (Safe Area) في الموبايلات الجديدة
+- Current sounds are generated by `tools/make_sounds.py` (100% original)
+- To replace one, drop a file with **the same name** into `assets/sounds/`
+- Sources: **jsfxr.me**, **Kenney.nl**, **Pixabay Music**
 
 ---
 
-## ✅ المرحلة 7 — الاختبار
-1. **اختبارات تلقائية:** `godot --headless --path . -s tests/test_runner.gd`
-2. **على الكمبيوتر:** ▶️ في Godot والعب بالماوس
-3. **على الموبايل:** كابل + USB Debugging + زرار الأندرويد في Godot (Remote Deploy)
-4. **قائمة فحص:**
-   - [ ] شاشة صغيرة وكبيرة وتابلت
-   - [ ] موبايل ضعيف من غير تقطيع
-   - [ ] أعلى سكور بيتحفظ بعد قفل التطبيق
-   - [ ] الصوت بيقف لما تقفله
-   - [ ] زرار Back بيفتح الإيقاف
+## 📱 Phase 6 — Screens
+- ✅ Menu: logo, Play, best score, sound/music/vibration toggles
+- ✅ Game: score, best score, pause button
+- ✅ Pause: resume / restart / home + settings
+- ✅ Game over: score, "NEW BEST!", play again
+- ⏳ Save and resume an unfinished game
+- ⏳ Splash screen with the logo
+- ⏳ Safe area for notched phones
 
 ---
 
-## 💰 المرحلة 8 — الإعلانات (اختياري)
-- إضافة AdMob لـ Godot (Godot AdMob plugin)
-- **Interstitial:** بعد كل 2-3 Game Over (مش كل مرة)
-- **Rewarded:** "شوف إعلان وكمّل" (نمسح كام خانة)
-- **Banner:** اختياري تحت
-- ⚠️ وإنت بتجرب: **Test IDs بس** — الضغط على إعلاناتك الحقيقية ممكن يقفل حسابك
+## ✅ Phase 7 — Testing
+1. **Automated:** `godot --headless --path . -s tests/test_runner.gd`
+2. **Desktop:** ▶️ in Godot, play with the mouse
+3. **Phone:** USB cable + USB debugging + Godot's Android remote deploy button
+4. **Checklist:**
+   - [ ] Small, large and tablet screens
+   - [ ] Low-end phone runs smoothly
+   - [ ] Best score survives closing the app
+   - [ ] Sound stops when muted
+   - [ ] Back button opens Pause
 
 ---
 
-## 🤖 المرحلة 9 — التصدير لأندرويد
-1. Godot: **Editor → Editor Settings → Export → Android** → مسار الـ SDK والـ JDK
+## 💰 Phase 8 — Ads (optional)
+- Godot AdMob plugin
+- **Interstitial:** after every 2–3 game overs (not every time)
+- **Rewarded:** "watch an ad to continue" (clear a few cells)
+- **Banner:** optional, at the bottom
+- ⚠️ Use **test ad IDs only** while developing — clicking your own live ads can get the account banned
+
+---
+
+## 🤖 Phase 9 — Android export
+1. Godot: **Editor → Editor Settings → Export → Android** → set SDK and JDK paths
 2. **Project → Install Android Build Template**
 3. **Project → Export → Add → Android**:
-   - Package name: `com.yourname.gamename` (**مينفعش يتغير بعد الرفع**)
-   - Version code: 1 (يزيد مع كل تحديث) — Version name: `1.0.0`
+   - Package name: `com.<yourname>.bloxo` (**cannot change after release**)
+   - Version code: 1 (increase on every update) — Version name: `1.0.0`
    - Architectures: arm64-v8a + armeabi-v7a
-   - Permissions: **VIBRATE** (عشان الاهتزاز)
-   - الأيقونات (Main + Adaptive)
-4. **مفتاح التوقيع:**
+   - Permissions: **VIBRATE**
+   - Icons (main + adaptive)
+4. **Signing key:**
    ```
-   keytool -genkey -v -keystore my-release.keystore -alias mygame -keyalg RSA -keysize 2048 -validity 10000
+   keytool -genkey -v -keystore bloxo-release.keystore -alias bloxo -keyalg RSA -keysize 2048 -validity 10000
    ```
-   ⚠️⚠️ **احفظ الملف والباسورد في 3 أماكن.** لو ضاع مش هتقدر تحدّث اللعبة أبدًا.
-   ⚠️ **متحطوش جوه فولدر المشروع لو هترفعه على GitHub.**
-5. صدّر **AAB** (Export With Debug = off)
+   ⚠️⚠️ **Back up the keystore and password in 3 places.** Losing it means you can never update the app.
+   ⚠️ Never commit it (already in `.gitignore`).
+5. Export an **AAB** (Export With Debug = off)
 
 ---
 
-## 🏪 المرحلة 10 — جوجل بلاي
-1. حساب مطور: play.google.com/console — **25 دولار مرة واحدة** + تأكيد هوية
-2. Create App → لعبة → مجانية
-3. صفحة المتجر: أيقونة 512×512، Feature Graphic 1024×500، 4-8 سكرين شوت، وصف قصير (80 حرف) وطويل — عربي وإنجليزي
-4. **Privacy Policy:** صفحة ويب (GitHub Pages ببلاش)
-5. النماذج: Content Rating، Data Safety (AdMob بيجمع Advertising ID)، Target Audience (⚠️ متختارش أطفال لو فيه إعلانات عادية)، Ads
-6. ⚠️ **اختبار مغلق: 12 شخص على الأقل لمدة 14 يوم متواصلين** (للحسابات الشخصية الجديدة) — اجمع الناس من دلوقتي
-7. Production → مراجعة جوجل (أيام لأسبوع) → 🎉
+## 🏪 Phase 10 — Google Play
+1. Developer account: play.google.com/console — **$25 one-time** + identity verification
+2. Create App → Game → Free
+3. Store listing: 512×512 icon, 1024×500 feature graphic, 4–8 phone screenshots, short (80 chars) and full description
+4. **Privacy policy** page (GitHub Pages works)
+5. Forms: content rating, data safety (AdMob collects the advertising ID), target audience (⚠️ don't target children with regular ads), ads declaration
+6. ⚠️ **Closed test: at least 12 testers for 14 continuous days** (required for new personal accounts) — start collecting testers early
+7. Apply for production → review (a few days to a week) → 🎉
 
 ---
 
-## 🔄 المرحلة 11 — بعد النشر
-- Android Vitals (Crashes / ANR)
-- رد على التقييمات
-- تحديث = Version code +1 → AAB جديد → رفع
-- أفكار: تحدي يومي، ثيمات تتفتح، إنجازات، Leaderboard (Google Play Games)
+## 🔄 Phase 11 — After launch
+- Watch Android Vitals (crashes / ANRs)
+- Reply to reviews
+- Update = version code +1 → new AAB → upload
+- Ideas: daily challenge, unlockable themes, achievements, leaderboard (Google Play Games)
 
 ---
 
-## ⏱️ الجدول
+## ⏱️ Timeline
 
-| الأسبوع | الشغل | النتيجة |
+| Week | Work | Result |
 |---|---|---|
-| 1 | 0 → 3 | لعبة شغالة تقدر تلعبها ✅ |
-| 2 | 4 → 6 | شكلك وأصواتك وكل الشاشات |
-| 3 | 7 → 9 | على موبايلك + إعلانات + AAB |
-| 4-5 | 10 | الاختبار المغلق (14 يوم) |
-| 6 | | 🚀 نشر |
+| 1 | Phases 0–3 | playable game ✅ |
+| 2 | Phases 4–6 | own look, sounds, all screens |
+| 3 | Phases 7–9 | running on a phone + ads + AAB |
+| 4–5 | Phase 10 | closed test (14 days) |
+| 6 | | 🚀 launch |
