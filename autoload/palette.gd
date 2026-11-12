@@ -1,36 +1,69 @@
 extends Node
-## 🎨 ALL game colors live here (NEON theme). Change them to re-theme the
-## whole game, like CSS variables. Keep exactly 8 piece colors.
+## 🎨 The CURRENT theme's colors and style. Every screen reads its colors
+## from here. Themes themselves are defined in logic/themes.gd.
+## Palette.set_theme("candy") switches theme and saves the choice.
 
-var background_top := Color("#150A33")
-var background_bottom := Color("#04020C")
-var background_grid := Color(0.55, 0.3, 1.0, 0.10)
+signal theme_changed
 
-var board_bg := Color("#0A0620")
-var board_glow := Color("#7B2CFF")
-var cell_empty := Color("#160E36")
-var cell_empty_edge := Color("#2A1D5C")
-
-var panel := Color("#0F0828")
-var panel_edge := Color("#B026FF")
-var button := Color("#3D7BFF")
-var button_primary := Color("#39FF88")
-
-var text := Color("#FFFFFF")
-var text_dim := Color("#A99CFF")
-var accent := Color("#FFE600")
-var outline := Color("#04020C")
-
-## How visible the "shadow" preview of a piece on the board is (0..1).
+var theme_id := ""
+var theme_name := ""
+var block_style := "neon"
+var background_style := "neon"
+var glow_ui := true
+var solid_buttons := false
+var cell_radius := 0.18
 var ghost_alpha := 0.45
 
-var piece_colors: Array[Color] = [
-	Color("#FF2E88"), # hot pink
-	Color("#FF9F1C"), # orange
-	Color("#FFE600"), # yellow
-	Color("#39FF88"), # neon green
-	Color("#00F0FF"), # cyan
-	Color("#3D7BFF"), # electric blue
-	Color("#B026FF"), # purple
-	Color("#FF3B5C"), # neon red
-]
+var background_top := Color.BLACK
+var background_bottom := Color.BLACK
+var decor := Color.WHITE
+var board_bg := Color.BLACK
+var board_edge := Color.WHITE
+var cell_empty := Color.BLACK
+var cell_empty_edge := Color.WHITE
+var panel := Color.BLACK
+var panel_edge := Color.WHITE
+var button := Color.BLUE
+var button_primary := Color.GREEN
+var text := Color.WHITE
+var text_dim := Color.GRAY
+var accent := Color.YELLOW
+var outline := Color.BLACK
+var piece_colors: Array[Color] = []
+
+
+func _ready() -> void:
+	apply(SaveData.theme)
+
+
+## Switches theme without saving (used at start-up and for previews).
+func apply(id: String) -> void:
+	if not Themes.DATA.has(id):
+		id = Themes.ORDER[0]
+	var d: Dictionary = Themes.DATA[id]
+	theme_id = id
+	theme_name = d["name"]
+	block_style = d["block_style"]
+	background_style = d["background_style"]
+	glow_ui = d["glow_ui"]
+	solid_buttons = d["solid_buttons"]
+	cell_radius = d["cell_radius"]
+	ghost_alpha = d["ghost_alpha"]
+	for key in Themes.COLOR_KEYS:
+		set(key, Color(d[key]))
+	piece_colors.clear()
+	for hex in d["piece_colors"]:
+		piece_colors.append(Color(hex))
+	RenderingServer.set_default_clear_color(background_bottom)
+	theme_changed.emit()
+
+
+## Switches theme and remembers it.
+func set_theme(id: String) -> void:
+	apply(id)
+	SaveData.theme = theme_id
+	SaveData.write()
+
+
+func cycle_theme() -> void:
+	set_theme(Themes.next(theme_id))

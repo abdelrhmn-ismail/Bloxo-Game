@@ -8,16 +8,16 @@ var panel: PanelContainer
 
 
 func _init() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 	var dim := ColorRect.new()
 	dim.color = Color(0.01, 0.0, 0.04, 0.75)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
 
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 
 	panel = PanelContainer.new()
@@ -45,6 +45,14 @@ func add_text(text: String, font_size: int, color: Color) -> Label:
 func add_button(text: String, on_press: Callable, color: Color = Color.TRANSPARENT) -> Button:
 	var b := UIKit.button(text, Vector2(640, 140), 52, color)
 	b.pressed.connect(on_press)
+	box.add_child(b)
+	return b
+
+
+## A button that switches to the next theme (the screen rebuilds itself).
+func add_theme_button() -> Button:
+	var b := UIKit.button("Theme: %s" % Palette.theme_name, Vector2(640, 110), 40, Palette.accent)
+	b.pressed.connect(func(): Palette.cycle_theme())
 	box.add_child(b)
 	return b
 

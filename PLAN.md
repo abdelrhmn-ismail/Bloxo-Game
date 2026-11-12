@@ -11,7 +11,7 @@
 - [x] Phase 1 — Project structure
 - [x] Phase 2 — Game rules (board, pieces, clearing, scoring, game over) + tests
 - [x] Phase 3 — Touch controls (drag, ghost preview, return animation)
-- [x] Phase 4 — Look and identity (**Bloxo**, neon theme, block logo, icons, Audiowide font)
+- [x] Phase 4 — Look and identity (**Bloxo**, 4 switchable themes — Neon default, Candy, Gems, Nature — block logo, icons, Audiowide font)
 - [~] Phase 5 — Audio (generated starter sounds; music still missing)
 - [x] Phase 6 — Screens (splash, menu with Continue, pause, game over, auto-save/resume, safe area)
 - [ ] Phase 7 — Testing on a real phone
@@ -115,8 +115,12 @@ After every move: if none of the remaining pieces fit → game over, best score 
 ## 🎨 Phase 4 — Look and identity
 
 1. **Name:** **Bloxo** ✅ (store title: *Bloxo: Block Puzzle*)
-2. **Theme:** 🌌 **Neon** ✅ — dark glass blocks with glowing borders, synthwave grid background
-3. **Colors:** all in `autoload/palette.gd` ✅
+2. **Themes** ✅ — switchable from the menu and pause screen, choice is saved:
+   - 🌌 **Neon** (default) — dark glass blocks with glowing borders, synthwave grid
+   - 🍬 **Candy** — glossy candy blocks, floating bubbles
+   - 💎 **Gems** — faceted jewel blocks, twinkling stars
+   - 🌿 **Nature** — leaf tiles on a wooden board, hills and falling leaves
+3. **Colors:** per theme in `logic/themes.gd`, current theme in `autoload/palette.gd` ✅
 4. **Logo:** "BLOXO" built from neon blocks ✅ (`ui/neon_logo.gd` in game, `tools/make_logo.py` for PNGs)
 5. **Icons:** `icon.png`, adaptive foreground/background, store icon, feature graphic ✅
 6. **Font:** Audiowide (SIL OFL) ✅

@@ -7,10 +7,10 @@ signal play_pressed(resume: bool)
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 
 	var box := VBoxContainer.new()
@@ -41,6 +41,12 @@ func _ready() -> void:
 	row.add_child(_toggle("Sound", "sound_on"))
 	row.add_child(_toggle("Music", "music_on"))
 	row.add_child(_toggle("Vibrate", "vibration_on"))
+
+	# Theme switch: the menu rebuilds itself in the new theme (see Main).
+	var theme_btn := UIKit.button("THEME: %s" % Palette.theme_name.to_upper(), Vector2(620, 120), 44, Palette.accent)
+	theme_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	theme_btn.pressed.connect(func(): Palette.cycle_theme())
+	box.add_child(theme_btn)
 
 	Audio.play_music()
 

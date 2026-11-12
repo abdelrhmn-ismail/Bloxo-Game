@@ -3,3 +3,4 @@
 *.keystore
 *.jks
 export_credentials.cfg
+.codegpt-game.json

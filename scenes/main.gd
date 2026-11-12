@@ -1,6 +1,12 @@
 extends Node
 ## Entry point: keeps the background and switches between screens
-## (splash → menu → game).
+## (splash → menu → game). Rebuilds the menu when the theme changes.
+##
+## Developer options (after "--" on the command line), e.g.
+##   godot --path . -- --theme=candy --screen=game-demo
+##   --theme=<id>        preview a theme without saving it
+##   --screen=menu|game|game-demo|pause   skip the splash and open that screen
+##   --shot=<file.png>   save a screenshot after ~1.5 s, then quit
 
 var current: Node
 ## Control-based screens (menus) live here so they get the full screen size.
@@ -8,11 +14,43 @@ var ui_layer: CanvasLayer
 
 
 func _ready() -> void:
-	RenderingServer.set_default_clear_color(Palette.background_bottom)
 	add_child(GradientBackground.new())
 	ui_layer = CanvasLayer.new()
 	add_child(ui_layer)
-	show_splash()
+	Palette.theme_changed.connect(_on_theme_changed)
+
+	var screen := ""
+	var shot := ""
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--theme="):
+			Palette.apply(arg.trim_prefix("--theme="))
+		elif arg.begins_with("--screen="):
+			screen = arg.trim_prefix("--screen=")
+		elif arg.begins_with("--shot="):
+			shot = arg.trim_prefix("--shot=")
+	match screen:
+		"menu":
+			show_menu()
+		"game":
+			show_game()
+		"game-demo":
+			show_game(false, 12)
+		"pause":
+			show_game(false, 12)
+			current.call_deferred("_open_pause")
+		_:
+			show_splash()
+	if shot != "":
+		_take_screenshot(shot)
+
+
+## Developer option: wait for animations to settle, save a PNG, quit.
+func _take_screenshot(path: String) -> void:
+	await get_tree().create_timer(1.5).timeout
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(path)
+	print("screenshot saved: ", path)
+	get_tree().quit()
 
 
 func show_splash() -> void:
@@ -27,9 +65,10 @@ func show_menu() -> void:
 	_switch_to(menu)
 
 
-func show_game(resume: bool = false) -> void:
+func show_game(resume: bool = false, demo_moves: int = 0) -> void:
 	var game := GameScreen.new()
 	game.resume_saved = resume
+	game.demo_moves = demo_moves
 	game.exit_to_menu.connect(show_menu)
 	_switch_to(game)
 
@@ -42,6 +81,12 @@ func _switch_to(screen: Node) -> void:
 		ui_layer.add_child(screen)
 	else:
 		add_child(screen)
+
+
+func _on_theme_changed() -> void:
+	# The game screen restyles itself; the menu is simply rebuilt.
+	if current is MenuScreen:
+		show_menu()
 
 
 func _notification(what: int) -> void:

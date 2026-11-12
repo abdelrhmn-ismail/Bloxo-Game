@@ -12,6 +12,7 @@ func _init() -> void:
 	add_button("Resume", func(): resume_pressed.emit(), Palette.button_primary)
 	add_button("Restart", func(): restart_pressed.emit())
 	add_button("Home", func(): home_pressed.emit())
+	add_theme_button()
 	add_toggle("Sound", "sound_on")
 	add_toggle("Music", "music_on")
 	add_toggle("Vibration", "vibration_on")

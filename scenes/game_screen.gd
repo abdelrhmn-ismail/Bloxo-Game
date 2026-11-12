@@ -13,6 +13,8 @@ const TRAY_SCALE := 0.55
 var state := GameState.new()
 ## Set by Main before adding the screen: continue the saved game?
 var resume_saved := false
+## Developer option: auto-play this many moves at start (for screenshots).
+var demo_moves := 0
 
 # --- layout (recomputed when the screen size changes) ---
 var view_size := Vector2.ZERO
@@ -42,7 +44,8 @@ var celebrated_best := false
 
 # --- nodes ---
 var effects: Node2D
-var ui_layer: CanvasLayer
+var hud_layer: CanvasLayer
+var overlay_layer: CanvasLayer
 var hud: Control
 var score_label: Label
 var best_label: Label
@@ -59,14 +62,52 @@ func _ready() -> void:
 		# Starting fresh replaces any unfinished game.
 		SaveData.saved_game = {}
 		SaveData.write()
+	if demo_moves > 0:
+		_play_demo_moves(demo_moves)
 	displayed_score = float(state.score)
 	best_at_start = SaveData.best_score
 	effects = Node2D.new()
 	add_child(effects)
+	# UI goes on CanvasLayers so it always covers the full screen
+	# (Controls inside a Node2D don't get the screen size).
+	hud_layer = CanvasLayer.new()
+	hud_layer.layer = 1
+	add_child(hud_layer)
+	overlay_layer = CanvasLayer.new()
+	overlay_layer.layer = 2
+	add_child(overlay_layer)
 	_build_hud()
 	get_viewport().size_changed.connect(_layout)
+	Palette.theme_changed.connect(_on_theme_changed)
 	_layout()
 	_animate_tray_in()
+
+
+## Rebuild everything that baked in the old theme's colors.
+func _on_theme_changed() -> void:
+	board_style = null
+	hud.queue_free()
+	_build_hud()
+	_layout()
+	if overlay is PausePanel:
+		_close_overlay()
+		_open_pause()
+
+
+## Developer option: fill the board a bit (first-fit) for screenshots.
+func _play_demo_moves(count: int) -> void:
+	for n in count:
+		var done := false
+		for slot in state.tray.size():
+			if done or state.tray[slot] == null:
+				continue
+			for row in Board.SIZE:
+				for col in Board.SIZE:
+					if not done and state.can_place(slot, (col * 3) % Board.SIZE, row):
+						state.try_place(slot, (col * 3) % Board.SIZE, row)
+						done = true
+		if state.game_over:
+			state.new_game()
 
 
 func _process(_delta: float) -> void:
@@ -79,14 +120,10 @@ func _process(_delta: float) -> void:
 # =====================================================================
 
 func _build_hud() -> void:
-	# UI goes on its own CanvasLayer so it always covers the full screen
-	# (Controls inside a Node2D don't get the screen size).
-	ui_layer = CanvasLayer.new()
-	add_child(ui_layer)
 	hud = Control.new()
-	hud.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hud.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ui_layer.add_child(hud)
+	hud_layer.add_child(hud)
 
 	score_label = UIKit.label("0", 120, Palette.text)
 	hud.add_child(score_label)
@@ -157,7 +194,7 @@ func _draw_board() -> void:
 	var board_px := cell_size * Board.SIZE
 	var pad := cell_size * 0.14
 	if board_style == null:
-		board_style = UIKit.neon_panel_style(Palette.board_bg, Palette.board_glow,
+		board_style = UIKit.neon_panel_style(Palette.board_bg, Palette.board_edge,
 			int(cell_size * 0.3), 0, 4, int(cell_size * 0.25))
 	draw_style_box(board_style,
 		Rect2(board_origin - Vector2(pad, pad), Vector2.ONE * (board_px + pad * 2)))
@@ -442,7 +479,7 @@ func _open_pause() -> void:
 func _show_overlay(panel: OverlayPanel) -> void:
 	_close_overlay()
 	overlay = panel
-	ui_layer.add_child(panel)
+	overlay_layer.add_child(panel)
 
 
 func _close_overlay() -> void:

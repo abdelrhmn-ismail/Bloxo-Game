@@ -16,6 +16,7 @@ func _run() -> void:
 	var save := SaveData
 	var saved_backup := save.saved_game.duplicate(true)
 	var best_backup: int = save.best_score
+	var theme_backup: String = save.theme
 	save.saved_game = {}
 
 	var menu := MenuScreen.new()
@@ -53,6 +54,19 @@ func _run() -> void:
 						moves += 1
 		await tree.process_frame
 	print("moves played: %d, score: %d" % [moves, game.state.score])
+
+	# Switch through every theme while the game and the pause panel are open.
+	game._open_pause()
+	for id in Themes.ORDER:
+		Palette.set_theme(id)
+		await tree.process_frame
+		await tree.process_frame
+		if Palette.theme_id != id:
+			_fail("theme %s did not apply" % id)
+		if not game.state.game_over and not (game.overlay is PausePanel):
+			_fail("pause panel lost after switching to %s" % id)
+	game._close_overlay()
+	print("themes checked: %s" % ", ".join(Themes.ORDER))
 	if moves == 0:
 		_fail("no moves were played")
 	if not game.state.game_over and not save.has_saved_game():
@@ -83,7 +97,7 @@ func _run() -> void:
 	# Put the player's real save back.
 	save.saved_game = saved_backup
 	save.best_score = best_backup
-	save.write()
+	Palette.set_theme(theme_backup) # also writes the save file
 	print("smoke test: %s" % ("OK" if errors == 0 else "%d FAILED" % errors))
 	tree.quit(1 if errors > 0 else 0)
 

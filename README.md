@@ -36,15 +36,40 @@ python3 tools/make_sounds.py   # starter sound effects
 - When you use all 3 pieces you get 3 new ones
 - **Game over** when none of your pieces fit anywhere
 
+## 🎨 Themes
+Four built-in themes, switchable from the menu (**THEME** button) or the pause screen.
+The choice is saved. **Neon** is the default.
+
+| Theme | Blocks | Background |
+|---|---|---|
+| 🌌 Neon | dark glass with glowing edges | scrolling synthwave grid |
+| 🍬 Candy | glossy candy with a 3D edge | floating bubbles |
+| 💎 Gems | cut jewels with facets and a sparkle | twinkling stars |
+| 🌿 Nature | leaf tiles on a wooden board | rolling hills, falling leaves |
+
+Add a theme by copying an entry in `logic/themes.gd` and adding its id to `ORDER`.
+
+## 🛠️ Developer options
+Arguments after `--` (handy for previews and screenshots):
+```
+godot --path . -- --theme=candy --screen=game-demo --shot=/tmp/candy.png
+```
+| Option | Effect |
+|---|---|
+| `--theme=<id>` | preview a theme without saving it |
+| `--screen=menu\|game\|game-demo\|pause` | skip the splash and open that screen (`game-demo` pre-fills the board) |
+| `--shot=<file.png>` | save a screenshot after ~1.5 s, then quit |
+
 ## 🎨 Where to change things
 | What | File |
 |---|---|
 | Game name | `project.godot` → `config/name` |
-| Colors | `autoload/palette.gd` |
+| Theme colors and styles | `logic/themes.gd` (current theme lives in `autoload/palette.gd`) |
+| Animated backgrounds | `scenes/background.gd` |
 | Piece shapes | `logic/shapes.gd` (drawn with `X` and `.`) |
 | Points and combos | `logic/scoring.gd` |
 | Difficulty | `logic/piece_generator.gd`, `logic/game_state.gd` |
-| Block look (neon) | `effects/cell_painter.gd` |
+| Block look (per theme) | `effects/cell_painter.gd` |
 | In-game logo | `ui/neon_logo.gd` |
 | Logo / icon images | `tools/make_logo.py` → `icon.png`, `assets/images/` |
 | Font | `assets/fonts/` (Audiowide, SIL OFL) + `project.godot` → `gui/theme/custom_font` |

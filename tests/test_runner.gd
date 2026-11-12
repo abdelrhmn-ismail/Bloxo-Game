@@ -19,6 +19,7 @@ func _init() -> void:
 	test_tray_always_has_a_fitting_piece()
 	test_save_and_restore_game()
 	test_restore_rejects_broken_data()
+	test_themes_are_complete()
 	print("\n%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -176,6 +177,22 @@ func test_restore_rejects_broken_data() -> void:
 	check(not gs.from_dict({}), "empty data rejected")
 	check(not gs.from_dict({"cells": [1, 2], "tray": [null, null, null]}), "short board rejected")
 	check(gs.board.cells == before, "board untouched after rejected restore")
+
+
+func test_themes_are_complete() -> void:
+	check(Themes.ORDER[0] == "neon", "neon is the default theme")
+	for id in Themes.ORDER:
+		check(Themes.DATA.has(id), "theme %s has data" % id)
+		var d: Dictionary = Themes.DATA[id]
+		for key in Themes.COLOR_KEYS:
+			check(d.has(key) and Color.html_is_valid(d[key]), "theme %s has valid %s" % [id, key])
+		check(d["piece_colors"].size() == PieceGenerator.COLOR_COUNT, "theme %s has 8 piece colors" % id)
+		for hex in d["piece_colors"]:
+			check(Color.html_is_valid(hex), "theme %s piece color %s valid" % [id, hex])
+		for key in ["name", "block_style", "background_style", "glow_ui", "solid_buttons", "cell_radius", "ghost_alpha"]:
+			check(d.has(key), "theme %s has %s" % [id, key])
+	check(Themes.next("neon") == "candy", "next theme after neon")
+	check(Themes.next("nature") == "neon", "theme list wraps around")
 
 
 func test_tray_always_has_a_fitting_piece() -> void:
