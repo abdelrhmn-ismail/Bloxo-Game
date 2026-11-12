@@ -20,6 +20,7 @@ From the project folder:
 godot --headless --path . --import
 godot --headless --path . -s tests/test_runner.gd      # rule tests → "0 failed"
 godot --headless --path . res://tests/smoke_test.tscn  # plays real moves → "smoke test: OK"
+godot --path . res://tests/click_theme_test.tscn       # needs a window: clicks THEME with doubled clicks
 ```
 
 ## 🖼️ Regenerate the logo and icons

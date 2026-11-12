@@ -5,6 +5,21 @@ extends RefCounted
 ## The font (Audiowide) is set for the whole project in project.godot.
 
 
+static var _last_action_ms := -100000
+
+
+## Returns false if another settings action happened in the last few
+## milliseconds. Some setups (e.g. the game embedded in the Godot editor)
+## can deliver one click twice; without this a toggle flips back, and the
+## theme button skips a theme.
+static func accept_action(min_gap_ms: int = 250) -> bool:
+	var now := Time.get_ticks_msec()
+	if now - _last_action_ms < min_gap_ms:
+		return false
+	_last_action_ms = now
+	return true
+
+
 ## Text with an outline; glowing themes also get a soft colored halo.
 static func style_label(l: Label, font_size: int, color: Color) -> void:
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

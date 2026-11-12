@@ -65,5 +65,8 @@ func set_theme(id: String) -> void:
 	SaveData.write()
 
 
+## Next theme (used by the THEME buttons). Ignores a duplicated click.
 func cycle_theme() -> void:
+	if not UIKit.accept_action():
+		return
 	set_theme(Themes.next(theme_id))

@@ -63,6 +63,8 @@ func add_toggle(title: String, setting: String) -> Button:
 	var refresh := func(): b.text = "%s: %s" % [title, "ON" if SaveData.get(setting) else "OFF"]
 	refresh.call()
 	b.pressed.connect(func():
+		if not UIKit.accept_action():
+			return
 		SaveData.set(setting, not SaveData.get(setting))
 		SaveData.write()
 		Audio.refresh_music()
