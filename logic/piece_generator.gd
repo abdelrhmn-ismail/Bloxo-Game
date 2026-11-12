@@ -20,13 +20,21 @@ func _init(seed_value: int = -1) -> void:
 ## difficulty goes from 0.0 (easy) to 1.0 (hard).
 func weight_for(shape: Array, difficulty: float) -> float:
 	var n := shape.size()
+	var w: float
 	if n <= 2:
-		return lerpf(1.2, 0.6, difficulty)
-	if n == 3:
-		return lerpf(1.2, 0.9, difficulty)
-	if n == 4:
-		return 1.0
-	return lerpf(0.5, 1.1, difficulty)
+		w = lerpf(1.2, 0.7, difficulty)
+	elif n == 3:
+		w = lerpf(1.2, 0.9, difficulty)
+	elif n == 4:
+		w = 1.0
+	else:
+		w = lerpf(0.4, 0.9, difficulty)
+	# Awkward shapes (diagonals, big corners) fill little of their box;
+	# make them rarer, especially early on.
+	var b := Shapes.bounds(shape)
+	if float(n) / (b.x * b.y) < 0.6:
+		w *= lerpf(0.35, 0.7, difficulty)
+	return w
 
 
 func random_shape(difficulty: float) -> Array:
@@ -46,17 +54,26 @@ func random_piece(difficulty: float) -> Dictionary:
 	return {"shape": random_shape(difficulty), "color": rng.randi_range(0, COLOR_COUNT - 1)}
 
 
-## Makes a new tray of pieces. Guarantees at least one of them fits
-## on the board (if any shape can fit at all), so the player never
-## loses unfairly right after a refill.
+## Makes a new tray of pieces. Prefers a tray where EVERY piece fits
+## somewhere on the current board; otherwise one where at least one
+## fits; and as a last resort forces one fitting piece in. So the player
+## never loses unfairly right after a refill.
 func make_tray(board: Board, difficulty: float, count: int = 3) -> Array:
+	var fallback := []
 	for attempt in 30:
 		var candidate := []
 		for i in count:
 			candidate.append(random_piece(difficulty))
+		var fitting := 0
 		for piece in candidate:
 			if board.can_fit_anywhere(piece["shape"]):
-				return candidate
+				fitting += 1
+		if fitting == count:
+			return candidate
+		if fitting > 0 and fallback.is_empty():
+			fallback = candidate
+	if not fallback.is_empty():
+		return fallback
 
 	# The board is very full: force one piece that fits.
 	var result := []

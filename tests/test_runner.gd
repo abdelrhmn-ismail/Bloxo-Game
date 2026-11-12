@@ -21,6 +21,8 @@ func _init() -> void:
 	test_restore_rejects_broken_data()
 	test_themes_are_complete()
 	test_translations_are_complete()
+	test_restore_rejects_broken_shapes()
+	test_random_games_keep_rules()
 	print("\n%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -217,6 +219,81 @@ func test_translations_are_complete() -> void:
 	check(Strings.from_locale("ar_EG") == "ar", "Arabic phone -> Arabic")
 	check(Strings.from_locale("ja_JP") == "en", "unsupported language -> English")
 	check(Strings.next("ar") == "en", "language list wraps around")
+
+
+func test_restore_rejects_broken_shapes() -> void:
+	var good := GameState.new(3).to_dict()
+	var cases := {
+		"empty shape": [],
+		"not a pair": [5],
+		"pair too short": [[1]],
+		"negative cell": [[-1, 0]],
+		"cell too far": [[0, 99]],
+	}
+	for name in cases:
+		var data: Dictionary = good.duplicate(true)
+		data["tray"][0] = {"shape": cases[name], "color": 1}
+		check(not GameState.new(3).from_dict(data), "save with %s is rejected" % name)
+
+
+## Plays many full games with random legal moves and checks the rules
+## after every move (no crash, no full line left behind, score never
+## goes down, game over exactly when nothing fits, fair refills).
+func test_random_games_keep_rules() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2026
+	var games := 300
+	var total_moves := 0
+	var best := 0
+	var problems := 0
+	for g in games:
+		var gs := GameState.new(g)
+		var guard := 0
+		while not gs.game_over and guard < 2000:
+			guard += 1
+			var options := []
+			for slot in gs.tray.size():
+				if gs.tray[slot] == null:
+					continue
+				for row in Board.SIZE:
+					for col in Board.SIZE:
+						if gs.board.can_place(gs.tray[slot]["shape"], col, row):
+							options.append([slot, col, row])
+			if options.is_empty():
+				problems += 1 # game_over should already be true
+				break
+			var pick: Array = options[rng.randi_range(0, options.size() - 1)]
+			var score_before := gs.score
+			var size: int = gs.tray[pick[0]]["shape"].size()
+			var r := gs.try_place(pick[0], pick[1], pick[2])
+			total_moves += 1
+			if not r["ok"]:
+				problems += 1
+				break
+			var lines := gs.board.find_full_lines()
+			if lines["rows"].size() + lines["cols"].size() > 0:
+				problems += 1 # a full line was left on the board
+			if gs.score < score_before + size:
+				problems += 1
+			if gs.game_over != (not gs.has_any_move()):
+				problems += 1
+			if r["refilled"] and not gs.game_over:
+				var fits := false
+				for p in gs.tray:
+					if gs.board.can_fit_anywhere(p["shape"]):
+						fits = true
+				if not fits:
+					problems += 1
+			for v in gs.board.cells:
+				if v < Board.EMPTY or v >= PieceGenerator.COLOR_COUNT:
+					problems += 1
+					break
+		if guard >= 2000:
+			problems += 1 # game never ended
+		best = maxi(best, gs.score)
+	print("random games: %d games, %d moves, best score %d, avg %.1f moves/game" % [
+		games, total_moves, best, float(total_moves) / games])
+	check(problems == 0, "random games kept every rule (%d problems)" % problems)
 
 
 func test_tray_always_has_a_fitting_piece() -> void:

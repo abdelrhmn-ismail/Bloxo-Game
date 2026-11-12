@@ -9,6 +9,8 @@ signal exit_to_menu
 const LIFT_CELLS := 0.9
 ## Size of the waiting pieces in the tray compared to the board.
 const TRAY_SCALE := 0.55
+## How far (game units) the finger must move before it counts as a drag.
+const DRAG_THRESHOLD := 24.0
 
 var state := GameState.new()
 ## Set by Main before adding the screen: continue the saved game?
@@ -27,6 +29,8 @@ var tray_slot_size := Vector2.ZERO
 var drag_slot := -1
 var drag_pos := Vector2.ZERO
 var drag_scale := 1.0
+var drag_start := Vector2.ZERO
+var drag_moved := false
 var has_ghost := false
 var ghost_cell := Vector2i.ZERO
 var preview_lines := {"rows": [], "cols": []}
@@ -57,7 +61,11 @@ var board_style: StyleBoxFlat
 func _ready() -> void:
 	if resume_saved and SaveData.has_saved_game():
 		if not state.from_dict(SaveData.saved_game) or state.game_over:
+			# Broken or finished save: start fresh and forget it, so the
+			# menu doesn't keep offering "Continue" for it.
 			state.new_game()
+			SaveData.saved_game = {}
+			SaveData.write()
 	else:
 		# Starting fresh replaces any unfinished game.
 		SaveData.saved_game = {}
@@ -288,6 +296,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_drop()
 	elif event is InputEventScreenDrag and event.index == 0 and drag_slot != -1:
 		drag_pos = event.position
+		if not drag_moved and drag_pos.distance_to(drag_start) > DRAG_THRESHOLD:
+			drag_moved = true
 		_update_ghost()
 
 
@@ -299,6 +309,8 @@ func _try_pick(pos: Vector2) -> void:
 		if rect.has_point(pos):
 			drag_slot = i
 			drag_pos = pos
+			drag_start = pos
+			drag_moved = false
 			drag_scale = TRAY_SCALE
 			if return_slot == i:
 				return_slot = -1
@@ -320,7 +332,9 @@ func _update_ghost() -> void:
 	var top_left := _drag_top_left()
 	var col := roundi((top_left.x - board_origin.x) / cell_size)
 	var row := roundi((top_left.y - board_origin.y) / cell_size)
-	has_ghost = state.board.can_place(shape, col, row)
+	# No landing spot until the finger has really moved: a tap must never
+	# drop the piece onto the board.
+	has_ghost = drag_moved and state.board.can_place(shape, col, row)
 	if has_ghost:
 		ghost_cell = Vector2i(col, row)
 		preview_lines = state.board.lines_if_placed(shape, col, row)
@@ -334,8 +348,10 @@ func _drop() -> void:
 	var dragged_center := _drag_top_left() + b * cell_size * 0.5
 	var target := ghost_cell
 	var could_place := has_ghost
+	var was_tap := not drag_moved
 
 	drag_slot = -1
+	drag_moved = false
 	has_ghost = false
 	preview_lines = {"rows": [], "cols": []}
 
@@ -351,7 +367,8 @@ func _drop() -> void:
 	return_t = 0.0
 	create_tween().tween_property(self, "return_t", 1.0, 0.18) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	Audio.play("invalid")
+	if not was_tap:
+		Audio.play("invalid")
 
 
 # =====================================================================
@@ -458,12 +475,15 @@ func _on_game_over() -> void:
 		Audio.play("game_over")
 		_popup(Lang.t("NO_SPACE"), _board_center(), 90, Palette.text))
 	tw.tween_interval(1.2)
-	tw.tween_callback(func():
-		var panel := GameOverPanel.new()
-		panel.setup(state.score, SaveData.best_score, is_new_best)
-		panel.play_again_pressed.connect(_restart)
-		panel.home_pressed.connect(func(): exit_to_menu.emit())
-		_show_overlay(panel))
+	tw.tween_callback(_show_game_over_panel.bind(is_new_best))
+
+
+func _show_game_over_panel(is_new_best: bool) -> void:
+	var panel := GameOverPanel.new()
+	panel.setup(state.score, SaveData.best_score, is_new_best)
+	panel.play_again_pressed.connect(_restart)
+	panel.home_pressed.connect(func(): exit_to_menu.emit())
+	_show_overlay(panel)
 
 
 # =====================================================================

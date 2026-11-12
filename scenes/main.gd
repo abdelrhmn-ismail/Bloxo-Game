@@ -6,7 +6,7 @@ extends Node
 ##   godot --path . -- --theme=candy --screen=game-demo
 ##   --theme=<id>        preview a theme without saving it
 ##   --lang=<code>       preview a language (en fr de es it ar) without saving it
-##   --screen=menu|game|game-demo|pause   skip the splash and open that screen
+##   --screen=menu|game|game-demo|pause|gameover   skip the splash and open that screen
 ##   --shot=<file.png>   save a screenshot after ~1.5 s, then quit
 
 var current: Node
@@ -42,6 +42,9 @@ func _ready() -> void:
 		"pause":
 			show_game(false, 12)
 			current.call_deferred("_open_pause")
+		"gameover":
+			show_game(false, 12)
+			current.call_deferred("_show_game_over_panel", true)
 		_:
 			show_splash()
 	if shot != "":

@@ -43,7 +43,7 @@ func _run() -> void:
 
 
 func _find_theme_button(node: Node) -> Button:
-	if node is Button and node.text.begins_with("THEME"):
+	if node is Button and node.text.begins_with(Lang.t("THEME").to_upper()):
 		return node
 	for c in node.get_children():
 		var b := _find_theme_button(c)

@@ -7,7 +7,7 @@ const TRAY_SIZE := 3
 ## The combo stays alive while you clear at least once every N pieces.
 const MOVES_TO_KEEP_COMBO := 3
 ## Score at which the game reaches full difficulty.
-const MAX_DIFFICULTY_SCORE := 4000.0
+const MAX_DIFFICULTY_SCORE := 10000.0
 
 var board := Board.new()
 var generator: PieceGenerator
@@ -92,7 +92,14 @@ func from_dict(data: Dictionary) -> bool:
 			return false
 		var shape: Array[Vector2i] = []
 		for pair in item["shape"]:
-			shape.append(Vector2i(int(pair[0]), int(pair[1])))
+			if typeof(pair) != TYPE_ARRAY or pair.size() != 2:
+				return false
+			var p := Vector2i(int(pair[0]), int(pair[1]))
+			if p.x < 0 or p.y < 0 or p.x >= Board.SIZE or p.y >= Board.SIZE:
+				return false
+			shape.append(p)
+		if shape.is_empty():
+			return false
 		var color := clampi(int(item.get("color", 0)), 0, PieceGenerator.COLOR_COUNT - 1)
 		new_tray.append({"shape": shape, "color": color})
 

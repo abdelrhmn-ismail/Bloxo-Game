@@ -61,6 +61,17 @@ func vibrate(duration_ms: int = 20) -> void:
 		Input.vibrate_handheld(duration_ms)
 
 
+## Stops every sound (used before quitting so nothing is left playing).
+func stop_all() -> void:
+	for player in _players:
+		player.stop()
+	_music.stop()
+
+
+func _exit_tree() -> void:
+	stop_all()
+
+
 func _get_stream(sound_name: String) -> AudioStream:
 	if _streams.has(sound_name):
 		return _streams[sound_name]

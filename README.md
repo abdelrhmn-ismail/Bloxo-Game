@@ -18,9 +18,11 @@ If anything red shows up in the **Output** panel, copy it and open an issue.
 From the project folder:
 ```
 godot --headless --path . --import
-godot --headless --path . -s tests/test_runner.gd      # rule tests → "0 failed"
-godot --headless --path . res://tests/smoke_test.tscn  # plays real moves → "smoke test: OK"
+godot --headless --path . -s tests/test_runner.gd      # rules + 300 random games → "0 failed"
+godot --headless --path . res://tests/smoke_test.tscn  # plays real moves, all themes/languages → "smoke test: OK"
+godot --headless --path . res://tests/tap_test.tscn    # a tap never drops a piece; a drag does → both "OK"
 godot --path . res://tests/click_theme_test.tscn       # needs a window: clicks THEME with doubled clicks
+godot --headless --path . -s tests/balance_check.gd    # difficulty report (smart player), not pass/fail
 ```
 
 ## 🖼️ Regenerate the logo and icons
@@ -69,7 +71,7 @@ godot --path . -- --theme=candy --screen=game-demo --shot=/tmp/candy.png
 |---|---|
 | `--theme=<id>` | preview a theme without saving it |
 | `--lang=<code>` | preview a language (`en fr de es it ar`) without saving it |
-| `--screen=menu\|game\|game-demo\|pause` | skip the splash and open that screen (`game-demo` pre-fills the board) |
+| `--screen=menu\|game\|game-demo\|pause\|gameover` | skip the splash and open that screen (`game-demo` pre-fills the board) |
 | `--shot=<file.png>` | save a screenshot after ~1.5 s, then quit |
 
 ## 🎨 Where to change things
