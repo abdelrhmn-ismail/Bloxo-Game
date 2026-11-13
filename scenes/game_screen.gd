@@ -83,6 +83,23 @@ var skip_button: Button
 var overlay: OverlayPanel
 var board_style: StyleBoxFlat
 
+# --- redraw only when something changed (saves CPU/GPU on phones) ---
+## Drawing is split in two layers so dragging a piece only redraws the
+## piece, not the whole board (the board is the expensive part).
+var board_layer: DrawLayer
+var top_layer: DrawLayer
+var _last_board_key: Array = []
+var _last_top_key: Array = []
+var _layout_version := 0
+
+
+## A Node2D that draws with a function of the game screen.
+class DrawLayer extends Node2D:
+	var painter: Callable
+
+	func _draw() -> void:
+		painter.call(self)
+
 
 func _ready() -> void:
 	if tutorial:
@@ -104,6 +121,13 @@ func _ready() -> void:
 		_play_demo_moves(demo_moves)
 	displayed_score = float(state.score)
 	best_at_start = SaveData.best_score
+	# Same drawing order as before: board, then pieces, then effects.
+	board_layer = DrawLayer.new()
+	board_layer.painter = _paint_board
+	add_child(board_layer)
+	top_layer = DrawLayer.new()
+	top_layer.painter = _paint_top
+	add_child(top_layer)
 	effects = Node2D.new()
 	add_child(effects)
 	# UI goes on CanvasLayers so it always covers the full screen
@@ -127,6 +151,7 @@ func _ready() -> void:
 ## Rebuild everything that baked in the old theme's colors or language.
 func _on_theme_changed() -> void:
 	board_style = null
+	_layout_version += 1
 	hud.queue_free()
 	_build_hud()
 	_layout()
@@ -157,7 +182,33 @@ func _play_demo_moves(count: int) -> void:
 func _process(delta: float) -> void:
 	score_label.text = str(roundi(displayed_score))
 	_update_hint(delta)
-	queue_redraw()
+	# Redraw a layer only when something it shows has changed; otherwise
+	# it keeps showing exactly the same picture.
+	var board_key := _board_key()
+	if aim_mode != "" or board_key != _last_board_key:
+		_last_board_key = board_key
+		board_layer.queue_redraw()
+	var top_key := _top_key()
+	if _guide_visible() or top_key != _last_top_key:
+		_last_top_key = top_key
+		top_layer.queue_redraw()
+
+
+## Everything _paint_board() depends on.
+func _board_key() -> Array:
+	return [state.board.cells.hash(), state.tray.hash(), _layout_version,
+		drag_slot, has_ghost, ghost_cell, pulse, aim_mode]
+
+
+## Everything _paint_top() depends on.
+func _top_key() -> Array:
+	return [state.tray.hash(), _layout_version, overlay == null, drag_slot,
+		drag_pos, drag_scale, return_slot, return_t, tray_appear, guide_slot, guide_cell]
+
+
+## The hint hand moves with time on its own, so it redraws every frame.
+func _guide_visible() -> bool:
+	return guide_slot != -1 and drag_slot == -1 and overlay == null
 
 
 # =====================================================================
@@ -235,6 +286,9 @@ func _layout() -> void:
 	board_px = minf(board_px, (bottom_safe - top_safe) * 0.55)
 	cell_size = board_px / Board.SIZE
 	board_style = null # rebuilt at the new size
+	_layout_version += 1
+	# Cells are cached at the board cell size (drawn 1:1 on the board).
+	CellPainter.set_base_size(_cell_rect(0, 0).size.x)
 	board_origin = Vector2(
 		(view_size.x - board_px) * 0.5,
 		maxf(top_safe + 290.0, top_safe + (bottom_safe - top_safe) * 0.45 - board_px * 0.5))
@@ -292,24 +346,29 @@ func _board_center() -> Vector2:
 # Drawing
 # =====================================================================
 
-func _draw() -> void:
-	_draw_board()
+## Board layer: the board, its blocks, the landing shadow, hammer/bomb aim.
+func _paint_board(ci: CanvasItem) -> void:
+	_draw_board(ci)
 	if aim_mode != "":
-		_draw_aim()
-	_draw_tray()
+		_draw_aim(ci)
+
+
+## Top layer: tray pieces, the dragged piece and the animated hint hand.
+func _paint_top(ci: CanvasItem) -> void:
+	_draw_tray(ci)
 	if drag_slot != -1:
-		_draw_dragged()
+		_draw_dragged(ci)
 	elif overlay == null:
-		_draw_guide()
+		_draw_guide(ci)
 
 
-func _draw_board() -> void:
+func _draw_board(ci: CanvasItem) -> void:
 	var board_px := cell_size * Board.SIZE
 	var pad := cell_size * 0.14
 	if board_style == null:
 		board_style = UIKit.neon_panel_style(Palette.board_bg, Palette.board_edge,
 			int(cell_size * 0.3), 0, 4, int(cell_size * 0.25))
-	draw_style_box(board_style,
+	ci.draw_style_box(board_style,
 		Rect2(board_origin - Vector2(pad, pad), Vector2.ONE * (board_px + pad * 2)))
 
 	# Cells in lines that would be cleared take the dragged piece's color.
@@ -329,24 +388,24 @@ func _draw_board() -> void:
 			var rect := _cell_rect(col, row)
 			var v := state.board.get_cell(col, row)
 			if v == Board.EMPTY:
-				CellPainter.draw_empty(self, rect)
+				CellPainter.draw_empty(ci, rect)
 				continue
 			var color: Color = Palette.piece_colors[v]
 			if lit.has(Vector2i(col, row)):
 				color = drag_color
 			elif pulse > 0.0 and pulse_cells.has(Vector2i(col, row)):
 				color = color.lightened(0.45 * pulse)
-			CellPainter.draw_cell(self, rect, color)
+			CellPainter.draw_cell(ci, rect, color)
 
 	# Shadow of where the dragged piece will land.
 	if drag_slot != -1 and has_ghost:
 		for p in state.tray[drag_slot]["shape"]:
 			var cell: Vector2i = ghost_cell + p
 			var alpha: float = 1.0 if lit.has(cell) else Palette.ghost_alpha
-			CellPainter.draw_cell(self, _cell_rect(cell.x, cell.y), drag_color, alpha)
+			CellPainter.draw_cell(ci, _cell_rect(cell.x, cell.y), drag_color, alpha)
 
 
-func _draw_tray() -> void:
+func _draw_tray(ci: CanvasItem) -> void:
 	for i in state.tray.size():
 		var piece = state.tray[i]
 		if piece == null or i == drag_slot:
@@ -356,17 +415,17 @@ func _draw_tray() -> void:
 		if i == return_slot and return_t < 1.0:
 			center = return_from.lerp(center, return_t)
 			scale_now = lerpf(1.0, TRAY_SCALE, return_t)
-		_draw_piece(piece, center, cell_size * scale_now)
+		_draw_piece(ci, piece, center, cell_size * scale_now)
 
 
-func _draw_dragged() -> void:
+func _draw_dragged(ci: CanvasItem) -> void:
 	var piece: Dictionary = state.tray[drag_slot]
 	var b := Vector2(Shapes.bounds(piece["shape"]))
 	var center := _drag_top_left() + b * cell_size * 0.5
-	_draw_piece(piece, center, cell_size * drag_scale)
+	_draw_piece(ci, piece, center, cell_size * drag_scale)
 
 
-func _draw_piece(piece: Dictionary, center: Vector2, csize: float, alpha: float = 1.0) -> void:
+func _draw_piece(ci: CanvasItem, piece: Dictionary, center: Vector2, csize: float, alpha: float = 1.0) -> void:
 	if csize <= 1.0:
 		return
 	var b := Vector2(Shapes.bounds(piece["shape"]))
@@ -376,23 +435,23 @@ func _draw_piece(piece: Dictionary, center: Vector2, csize: float, alpha: float 
 	for p in piece["shape"]:
 		var rect := Rect2(origin + Vector2(p) * csize + Vector2(gap, gap) * 0.5,
 			Vector2(csize - gap, csize - gap))
-		CellPainter.draw_cell(self, rect, color, alpha)
+		CellPainter.draw_cell(ci, rect, color, alpha)
 
 
 ## While the hammer/bomb waits for a target: pulse the filled cells.
-func _draw_aim() -> void:
+func _draw_aim(ci: CanvasItem) -> void:
 	var glow := 0.18 + 0.14 * sin(Time.get_ticks_msec() / 1000.0 * 6.0)
 	for row in Board.SIZE:
 		for col in Board.SIZE:
 			if state.board.get_cell(col, row) != Board.EMPTY:
 				var r := _cell_rect(col, row)
-				draw_rect(r, Color(1, 1, 1, glow))
-				draw_rect(r, Color(Palette.accent, glow * 2.0), false, 3.0)
+				ci.draw_rect(r, Color(1, 1, 1, glow))
+				ci.draw_rect(r, Color(Palette.accent, glow * 2.0), false, 3.0)
 
 
 ## Animated hand showing a piece moving from the tray to guide_cell
 ## (tutorial steps and idle hints), plus a pulsing shadow at the target.
-func _draw_guide() -> void:
+func _draw_guide(ci: CanvasItem) -> void:
 	if guide_slot < 0 or guide_slot >= state.tray.size() or state.tray[guide_slot] == null:
 		return
 	var piece: Dictionary = state.tray[guide_slot]
@@ -403,7 +462,7 @@ func _draw_guide() -> void:
 	var glow := 0.3 + 0.25 * sin(t * 5.0)
 	for p in piece["shape"]:
 		var cell: Vector2i = guide_cell + p
-		CellPainter.draw_cell(self, _cell_rect(cell.x, cell.y), color, glow)
+		CellPainter.draw_cell(ci, _cell_rect(cell.x, cell.y), color, glow)
 
 	# Hand path: tray → above the target (same lift as a real drag).
 	var b := Vector2(Shapes.bounds(piece["shape"]))
@@ -419,13 +478,13 @@ func _draw_guide() -> void:
 	# moving, so it doesn't overlap the piece still in the tray).
 	var csize := lerpf(cell_size * TRAY_SCALE, cell_size, move)
 	var carried_center := pos - Vector2(0, (b.y * 0.5 + LIFT_CELLS) * csize)
-	_draw_piece(piece, carried_center, csize, 0.6 * fade * smoothstep(0.0, 0.3, move))
+	_draw_piece(ci, piece, carried_center, csize, 0.6 * fade * smoothstep(0.0, 0.3, move))
 
 	# The "finger": a soft disc with a ring.
 	var r := cell_size * 0.32
-	draw_circle(pos, r * 1.25, Color(Palette.accent, 0.25 * fade))
-	draw_circle(pos, r, Color(1, 1, 1, 0.85 * fade))
-	draw_arc(pos, r, 0, TAU, 32, Color(Palette.accent, fade), maxf(2.0, r * 0.18), true)
+	ci.draw_circle(pos, r * 1.25, Color(Palette.accent, 0.25 * fade))
+	ci.draw_circle(pos, r, Color(1, 1, 1, 0.85 * fade))
+	ci.draw_arc(pos, r, 0, TAU, 32, Color(Palette.accent, fade), maxf(2.0, r * 0.18), true)
 
 
 # =====================================================================

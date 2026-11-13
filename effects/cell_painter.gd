@@ -6,42 +6,75 @@ extends RefCounted
 ##   gems   – cut jewel with light/dark facets and a sparkle
 ##   nature – leaf-green style tile with a vein and soft shadow
 ## Change a style here to restyle every block in the game.
+##
+## Speed: every cell is drawn at one base size and scaled with
+## draw_set_transform, so the cached StyleBoxes are reused even while a
+## piece grows or shrinks in an animation (otherwise each new pixel size
+## built new StyleBoxes every frame and made animations stutter on phones).
 
+const K_NEON := 1
+const K_CANDY := 2
+const K_GEM_GLOW := 3
+const K_NATURE := 4
+const K_SHINE := 5
+
+## Size every cell is drawn at before scaling. GameScreen sets it to the
+## board cell size, so board cells are drawn 1:1.
+static var base_size := 128.0
 static var _styles := {}
+static var _empty_style: StyleBoxFlat
+static var _empty_sig: Array = []
+
+
+## Called when the board cell size changes (new screen size).
+static func set_base_size(size: float) -> void:
+	if size > 1.0 and not is_equal_approx(size, base_size):
+		base_size = size
+		_styles.clear()
 
 
 static func draw_cell(ci: CanvasItem, rect: Rect2, color: Color, alpha: float = 1.0) -> void:
 	var a := snappedf(clampf(alpha, 0.0, 1.0), 0.05)
-	if a <= 0.0:
+	if a <= 0.0 or rect.size.x <= 0.0:
 		return
+	var k := rect.size.x / base_size
+	var local := Rect2(Vector2.ZERO, rect.size / k)
+	ci.draw_set_transform(rect.position, 0.0, Vector2(k, k))
 	match Palette.block_style:
 		"candy":
-			_candy(ci, rect, color, a)
+			_candy(ci, local, color, a)
 		"gems":
-			_gem(ci, rect, color, a)
+			_gem(ci, local, color, a)
 		"nature":
-			_nature(ci, rect, color, a)
+			_nature(ci, local, color, a)
 		_:
-			_neon(ci, rect, color, a)
+			_neon(ci, local, color, a)
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
+## Empty board cells are always drawn at the board size, so one style.
 static func draw_empty(ci: CanvasItem, rect: Rect2) -> void:
-	var radius := int(rect.size.x * Palette.cell_radius)
-	var key := "empty|%s|%s|%d" % [Palette.cell_empty.to_html(), Palette.cell_empty_edge.to_html(), radius]
-	var s: StyleBoxFlat = _styles.get(key)
-	if s == null:
-		s = _new_style(Palette.cell_empty, radius)
-		s.set_border_width_all(maxi(1, int(rect.size.x * 0.03)))
-		s.border_color = Palette.cell_empty_edge
-		_store(key, s)
-	ci.draw_style_box(s, rect)
+	var sig := [Palette.cell_empty, Palette.cell_empty_edge, Palette.cell_radius, rect.size.x]
+	if _empty_style == null or sig != _empty_sig:
+		var radius := int(rect.size.x * Palette.cell_radius)
+		_empty_style = _new_style(Palette.cell_empty, radius)
+		_empty_style.set_border_width_all(maxi(1, int(rect.size.x * 0.03)))
+		_empty_style.border_color = Palette.cell_empty_edge
+		_empty_sig = sig
+	ci.draw_style_box(_empty_style, rect)
+
+
+## Number key for the style cache (much cheaper than building strings).
+static func _key(kind: int, color: Color, a: float, w: float) -> int:
+	return ((kind * 4096 + clampi(int(w), 0, 4095)) * 32 + roundi(a * 20.0)) * 4294967296 \
+		+ color.to_rgba32()
 
 
 # --- styles ----------------------------------------------------------------
 
 static func _neon(ci: CanvasItem, rect: Rect2, color: Color, a: float) -> void:
 	var w := rect.size.x
-	var key := "neon|%s|%s|%d" % [color.to_html(), a, int(w)]
+	var key := _key(K_NEON, color, a, w)
 	var s: StyleBoxFlat = _styles.get(key)
 	if s == null:
 		s = _new_style(Color(color.darkened(0.45), 0.85 * a), int(w * Palette.cell_radius))
@@ -56,7 +89,7 @@ static func _neon(ci: CanvasItem, rect: Rect2, color: Color, a: float) -> void:
 
 static func _candy(ci: CanvasItem, rect: Rect2, color: Color, a: float) -> void:
 	var w := rect.size.x
-	var key := "candy|%s|%s|%d" % [color.to_html(), a, int(w)]
+	var key := _key(K_CANDY, color, a, w)
 	var s: StyleBoxFlat = _styles.get(key)
 	if s == null:
 		s = _new_style(Color(color, a), int(w * Palette.cell_radius))
@@ -75,7 +108,7 @@ static func _candy(ci: CanvasItem, rect: Rect2, color: Color, a: float) -> void:
 static func _gem(ci: CanvasItem, rect: Rect2, color: Color, a: float) -> void:
 	var w := rect.size.x
 	# soft glow behind the jewel
-	var key := "gemglow|%s|%s|%d" % [color.to_html(), a, int(w)]
+	var key := _key(K_GEM_GLOW, color, a, w)
 	var g: StyleBoxFlat = _styles.get(key)
 	if g == null:
 		g = _new_style(Color(color.darkened(0.5), a), int(w * Palette.cell_radius))
@@ -103,7 +136,7 @@ static func _gem(ci: CanvasItem, rect: Rect2, color: Color, a: float) -> void:
 
 static func _nature(ci: CanvasItem, rect: Rect2, color: Color, a: float) -> void:
 	var w := rect.size.x
-	var key := "nature|%s|%s|%d" % [color.to_html(), a, int(w)]
+	var key := _key(K_NATURE, color, a, w)
 	var s: StyleBoxFlat = _styles.get(key)
 	if s == null:
 		s = _new_style(Color(color, a), int(w * Palette.cell_radius))
@@ -131,7 +164,7 @@ static func _nature(ci: CanvasItem, rect: Rect2, color: Color, a: float) -> void
 
 static func _shine(ci: CanvasItem, rect: Rect2, pos: Vector2, size: Vector2, alpha: float) -> void:
 	var r := Rect2(rect.position + rect.size * pos, rect.size * size)
-	var key := "shine|%s|%d" % [snappedf(alpha, 0.05), int(r.size.y * 0.5)]
+	var key := _key(K_SHINE, Color.WHITE, snappedf(alpha, 0.05), r.size.y * 0.5)
 	var s: StyleBoxFlat = _styles.get(key)
 	if s == null:
 		s = _new_style(Color(1, 1, 1, alpha), int(r.size.y * 0.5))
@@ -151,7 +184,7 @@ static func _new_style(bg: Color, radius: int) -> StyleBoxFlat:
 	return s
 
 
-static func _store(key: String, s: StyleBoxFlat) -> void:
+static func _store(key: int, s: StyleBoxFlat) -> void:
 	if _styles.size() > 1500:
 		_styles.clear()
 	_styles[key] = s
