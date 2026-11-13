@@ -30,7 +30,7 @@ func _ready() -> void:
 	logo.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	box.add_child(logo)
 	box.add_child(UIKit.label(Lang.t("BLOCK_PUZZLE"), 44, Palette.text_dim))
-	box.add_child(UIKit.label("%s  %d" % [Lang.t("BEST"), SaveData.best_score], 56, Palette.accent))
+	box.add_child(UIKit.number_label("%s  %d" % [Lang.t("BEST"), SaveData.best_score], 56, Palette.accent))
 
 	var spacer := Control.new()
 	spacer.custom_minimum_size = Vector2(0, 20)

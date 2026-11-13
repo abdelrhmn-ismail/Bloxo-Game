@@ -119,7 +119,7 @@ godot --path . -- --theme=candy --screen=game-demo --shot=/tmp/candy.png
 | Block look (per theme) | `effects/cell_painter.gd` |
 | In-game logo | `ui/neon_logo.gd` |
 | Logo / icon images | `tools/make_logo.py` → `icon.png`, `assets/images/` |
-| Font | `assets/fonts/` (Audiowide, SIL OFL) + `project.godot` → `gui/theme/custom_font` |
+| Font | `assets/fonts/` (Audiowide + Russo One for numbers, SIL OFL) + `project.godot` → `gui/theme/custom_font` |
 | Sounds | put a file with the same name in `assets/sounds/` |
 | Background music | add `assets/sounds/music.ogg` |
 | App icon | `icon.png` (generated) |
@@ -138,5 +138,6 @@ tools/      helper scripts (logo/icon renderer, starter sound generator)
 
 ## 📜 Credits
 - Font: [Audiowide](https://fonts.google.com/specimen/Audiowide) by Astigmatic — SIL Open Font License 1.1 (`assets/fonts/OFL-Audiowide.txt`)
+- Number font: [Russo One](https://fonts.google.com/specimen/Russo+One) by Jovanny Lemonad — SIL Open Font License 1.1 (`assets/fonts/OFL-RussoOne.txt`)
 - Arabic font: [Tajawal](https://fonts.google.com/specimen/Tajawal) by Boutros International — SIL Open Font License 1.1 (`assets/fonts/OFL-Tajawal.txt`)
 - Everything else (code, logo, icons, sounds) is original to this project.

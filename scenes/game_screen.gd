@@ -170,10 +170,10 @@ func _build_hud() -> void:
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud_layer.add_child(hud)
 
-	score_label = UIKit.label("0", 120, Palette.text)
+	score_label = UIKit.number_label("0", 120, Palette.text)
 	hud.add_child(score_label)
 
-	best_label = UIKit.label("", 48, Palette.accent)
+	best_label = UIKit.number_label("", 48, Palette.accent)
 	best_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_update_best_label()
 	hud.add_child(best_label)

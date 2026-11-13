@@ -12,8 +12,8 @@ func setup(score: int, best: int, is_new_best: bool, can_keep_playing: bool = fa
 	if is_new_best:
 		add_text(Lang.t("NEW_BEST"), 64, Palette.accent)
 	add_text(Lang.t("SCORE"), 40, Palette.text_dim)
-	add_text(str(score), 120, Palette.text)
-	add_text("%s  %d" % [Lang.t("BEST"), best], 48, Palette.accent)
+	box.add_child(UIKit.number_label(str(score), 120, Palette.text))
+	box.add_child(UIKit.number_label("%s  %d" % [Lang.t("BEST"), best], 48, Palette.accent))
 	if can_keep_playing:
 		add_button(Lang.t("KEEP_PLAYING"), func(): keep_playing_pressed.emit(), Palette.accent)
 	add_button(Lang.t("PLAY_AGAIN"), func(): play_again_pressed.emit(), Palette.button_primary)

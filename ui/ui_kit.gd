@@ -3,9 +3,13 @@ extends RefCounted
 ## Small helpers to build themed labels, buttons and panels from code.
 ## Colors and style come from Palette (the current theme).
 ## The font (Audiowide) is set for the whole project in project.godot.
+## Numbers use Russo One instead: Audiowide draws 0 with a slash, so a
+## score of 0 looked like a "forbidden" sign.
 
+const NUMBER_FONT := "res://assets/fonts/RussoOne-Regular.ttf"
 
 static var _last_action_ms := -100000
+static var _number_font: Font
 
 
 ## Returns false if another settings action happened in the last few
@@ -46,6 +50,27 @@ static func label(text: String, font_size: int, color: Color) -> Label:
 	l.text = text
 	style_label(l, font_size, color)
 	return l
+
+
+## Label for scores ("1250", "BEST  3195"): same style, number font.
+static func number_label(text: String, font_size: int, color: Color) -> Label:
+	var l := label(text, font_size, color)
+	var font := number_font()
+	if font != null:
+		l.add_theme_font_override("font", font)
+	return l
+
+
+## Russo One with the Arabic font as fallback (for the word "BEST").
+static func number_font() -> Font:
+	if _number_font == null:
+		_number_font = load(NUMBER_FONT) as Font
+		var arabic := load(Lang.ARABIC_FONT) as Font
+		if _number_font != null and arabic != null and not _number_font.fallbacks.has(arabic):
+			var list := _number_font.fallbacks.duplicate()
+			list.append(arabic)
+			_number_font.fallbacks = list
+	return _number_font
 
 
 ## Plain rounded box.
