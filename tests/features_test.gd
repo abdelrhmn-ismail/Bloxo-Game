@@ -51,7 +51,7 @@ func _test_tutorial() -> void:
 	_drag(game, 1, game.guide_cell)
 	await tree.create_timer(1.0).timeout
 	_check(game.tutorial_step == 2, "after placing, step 2 (got %d)" % game.tutorial_step)
-	_check(game.state.board.filled_count() == 5, "step 2 board has a row with a gap")
+	_check(game.state.board.filled_count() == Board.SIZE - 3, "step 2 board has a row with a 3-cell gap")
 
 	# Wrong move: place it somewhere that clears nothing.
 	_drag(game, 1, Vector2i(0, 0))

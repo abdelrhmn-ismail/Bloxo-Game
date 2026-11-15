@@ -8,6 +8,8 @@ const TRAY_SIZE := 3
 const MOVES_TO_KEEP_COMBO := 3
 ## Score at which the game reaches full difficulty.
 const MAX_DIFFICULTY_SCORE := 10000.0
+## Board size of saves made before the board became 9x9.
+const OLD_BOARD_SIZE := 8
 
 var board := Board.new()
 var generator: PieceGenerator
@@ -98,6 +100,8 @@ func to_dict() -> Dictionary:
 func from_dict(data: Dictionary) -> bool:
 	var cells = data.get("cells")
 	var tray_data = data.get("tray")
+	if typeof(cells) == TYPE_ARRAY:
+		cells = _resize_cells(cells)
 	if typeof(cells) != TYPE_ARRAY or cells.size() != Board.SIZE * Board.SIZE:
 		return false
 	if typeof(tray_data) != TYPE_ARRAY or tray_data.size() != TRAY_SIZE:
@@ -185,3 +189,19 @@ func try_place(slot: int, col: int, row: int) -> Dictionary:
 		"refilled": refilled,
 		"game_over": game_over,
 	}
+
+
+## A game saved on the old 8x8 board keeps its blocks in the top-left
+## corner; the new row and column start empty. Anything else is returned
+## unchanged (from_dict then accepts or rejects it as usual).
+static func _resize_cells(cells: Array) -> Array:
+	var old_size := OLD_BOARD_SIZE
+	if cells.size() != old_size * old_size or old_size >= Board.SIZE:
+		return cells
+	var result := []
+	result.resize(Board.SIZE * Board.SIZE)
+	result.fill(Board.EMPTY)
+	for row in old_size:
+		for col in old_size:
+			result[row * Board.SIZE + col] = cells[row * old_size + col]
+	return result

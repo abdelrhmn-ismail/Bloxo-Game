@@ -1,7 +1,7 @@
 # Bloxo
 
 **Bloxo** is an original block puzzle game built with **Godot 4**.
-Drag pieces onto an 8×8 board, fill rows or columns to clear them, chain combos, and chase your best score.
+Drag pieces onto a 9×9 board, fill rows or columns to clear them, chain combos, and chase your best score.
 
 See [PLAN.md](PLAN.md) for the full roadmap.
 

@@ -26,6 +26,8 @@ func _init() -> void:
 	test_rewards()
 	test_powerups_on_state()
 	test_snapshot_is_a_copy()
+	test_old_8x8_save_is_migrated()
+	test_helper_piece_completes_a_line()
 	print("\n%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -58,8 +60,8 @@ func test_place_and_bounds() -> void:
 	var b := Board.new()
 	var square := Shapes.parse("XX\nXX")
 	check(b.can_place(square, 0, 0), "square fits at corner")
-	check(not b.can_place(square, 7, 0), "square does not fit past right edge")
-	check(not b.can_place(square, 0, 7), "square does not fit past bottom edge")
+	check(not b.can_place(square, Board.SIZE - 1, 0), "square does not fit past right edge")
+	check(not b.can_place(square, 0, Board.SIZE - 1), "square does not fit past bottom edge")
 	check(not b.can_place(square, -1, 0), "negative column is outside")
 	b.place(square, 3, 3, 2)
 	check(b.get_cell(4, 4) == 2, "placed cell has color")
@@ -76,7 +78,7 @@ func test_row_and_column_clear() -> void:
 	check(lines["rows"] == [5], "row 5 full")
 	check(lines["cols"] == [2], "column 2 full")
 	var removed := b.clear_lines(lines)
-	check(removed.size() == 15, "row + column = 15 unique cells (got %d)" % removed.size())
+	check(removed.size() == Board.SIZE * 2 - 1, "row + column cells counted once (got %d)" % removed.size())
 	check(b.is_empty(), "board empty after clear")
 
 
@@ -85,23 +87,29 @@ func test_cross_clear_counts_cells_once() -> void:
 	fill_row(b, 0)
 	fill_row(b, 1)
 	var removed := b.clear_lines(b.find_full_lines())
-	check(removed.size() == 16, "two rows = 16 cells")
+	check(removed.size() == Board.SIZE * 2, "two rows = 2 x SIZE cells")
 
 
 func test_lines_preview_does_not_change_board() -> void:
 	var b := Board.new()
-	fill_row(b, 3, 7)
+	var last := Board.SIZE - 1
+	fill_row(b, 3, last)
 	var dot := Shapes.parse("X")
-	var preview := b.lines_if_placed(dot, 7, 3)
+	var preview := b.lines_if_placed(dot, last, 3)
 	check(preview["rows"] == [3], "preview finds the row")
-	check(b.get_cell(7, 3) == Board.EMPTY, "preview did not modify board")
+	check(b.get_cell(last, 3) == Board.EMPTY, "preview did not modify board")
 
 
 func test_scoring() -> void:
 	check(Scoring.clear_points(0, 0, 0) == 0, "no lines no points")
-	check(Scoring.clear_points(8, 1, 1) == 80, "one line = 80")
-	check(Scoring.clear_points(16, 2, 1) == 320, "two lines = 16*10*2")
-	check(Scoring.clear_points(8, 1, 3) == 160, "combo x3 doubles")
+	check(Board.SIZE == 9, "board is 9x9")
+	check(Scoring.clear_points(9, 1, 1) == 63, "one 9-cell line = 63")
+	check(Scoring.clear_points(17, 2, 1) == 238, "row + column = 17*7*2")
+	check(Scoring.clear_points(9, 1, 3) == 126, "combo x3 doubles")
+	check(Scoring.place_points(0) == 0, "no cells no place points")
+	check(Scoring.place_points(1) == 1, "single cell still gives 1 point")
+	check(Scoring.place_points(4) == 3, "4 cells = 3 points (70%)")
+	check(Scoring.place_points(9) == 6, "9 cells = 6 points (70%)")
 	check(Scoring.praise_word(1) == "", "no word for 1 line")
 	check(Scoring.praise_word(5) == "AMAZING", "word for 5 lines")
 
@@ -277,7 +285,7 @@ func test_random_games_keep_rules() -> void:
 			var lines := gs.board.find_full_lines()
 			if lines["rows"].size() + lines["cols"].size() > 0:
 				problems += 1 # a full line was left on the board
-			if gs.score < score_before + size:
+			if gs.score < score_before + Scoring.place_points(size):
 				problems += 1
 			if gs.game_over != (not gs.has_any_move()):
 				problems += 1
@@ -358,3 +366,68 @@ func test_tray_always_has_a_fitting_piece() -> void:
 			if b.can_fit_anywhere(p["shape"]):
 				ok = true
 		check(ok, "tray has a piece that fits a single hole")
+
+
+func test_old_8x8_save_is_migrated() -> void:
+	# A game saved before the board grew to 9x9 (64 cells).
+	var old_cells := []
+	old_cells.resize(64)
+	old_cells.fill(Board.EMPTY)
+	old_cells[0] = 3 # top-left
+	old_cells[7] = 4 # top-right of the old board
+	old_cells[63] = 5 # bottom-right of the old board
+	var data := GameState.new(11).to_dict()
+	data["cells"] = old_cells
+	var gs := GameState.new(12)
+	check(gs.from_dict(data), "old 8x8 save loads")
+	check(gs.board.cells.size() == Board.SIZE * Board.SIZE, "migrated board has the new size")
+	check(gs.board.get_cell(0, 0) == 3 and gs.board.get_cell(7, 0) == 4 and gs.board.get_cell(7, 7) == 5,
+		"old blocks keep their place")
+	check(gs.board.get_cell(8, 0) == Board.EMPTY and gs.board.get_cell(0, 8) == Board.EMPTY,
+		"new column and row start empty")
+	check(gs.board.filled_count() == 3, "no extra blocks appear")
+	var odd := data.duplicate()
+	odd["cells"] = [1, 2, 3]
+	check(not GameState.new(13).from_dict(odd), "non-square board still rejected")
+
+
+## The helper piece must really complete a line, and must only be missing
+## when no shape at all can (checked against a slow brute force).
+func test_helper_piece_completes_a_line() -> void:
+	var gen := PieceGenerator.new(21)
+	check(gen.helper_shape(Board.new()).is_empty(), "empty board: no shape can fill a 9-cell line")
+	var b := Board.new()
+	fill_row(b, 4, 6)
+	var help := gen.helper_shape(b)
+	check(not help.is_empty() and _any_clear(b, help), "one gap in a row: helper fills it")
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	var wrong := 0
+	for i in 150:
+		var board := Board.new()
+		var density := rng.randf_range(0.3, 0.85)
+		for idx in board.cells.size():
+			if rng.randf() < density:
+				board.cells[idx] = 0
+		# A full line can't stay on a real board.
+		board.clear_lines(board.find_full_lines())
+		var shape := gen.helper_shape(board)
+		if shape.is_empty():
+			for s in Shapes.all():
+				if _any_clear(board, s):
+					wrong += 1
+					break
+		elif not _any_clear(board, shape):
+			wrong += 1
+	check(wrong == 0, "helper piece matches brute force on random boards (%d wrong)" % wrong)
+
+
+func _any_clear(board: Board, shape: Array) -> bool:
+	for row in Board.SIZE:
+		for col in Board.SIZE:
+			if board.can_place(shape, col, row):
+				var lines := board.lines_if_placed(shape, col, row)
+				if lines["rows"].size() + lines["cols"].size() > 0:
+					return true
+	return false

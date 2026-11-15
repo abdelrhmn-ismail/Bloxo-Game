@@ -77,7 +77,7 @@ Logic is separated from scenes (like backend vs frontend) so the rules can be te
 ## 🧠 Phase 2 — Game rules
 
 ### Board `board.gd`
-- 8×8, each cell is `-1` (empty) or a color index `0..7`
+- 9×9, each cell is `-1` (empty) or a color index `0..7`
 - `can_place` / `place` / `find_full_lines` / `clear_lines` / `can_fit_anywhere` / `lines_if_placed`
 
 ### Shapes `shapes.gd`
@@ -91,14 +91,15 @@ To add a shape, draw it and add it to the list.
 - 3 pieces per round; a new set arrives when all 3 are used
 - Small pieces are more common early; big pieces grow with the score
 - At least one of the 3 always fits (no unfair losses)
+- Sometimes (40% early, 15% late) one piece is a "helper" that can complete a line
 
 ### Scoring `scoring.gd`
 | Event | Points |
 |---|---|
-| Place a piece | number of its cells |
-| Clear lines | cleared cells × 10 × number of lines |
+| Place a piece | 70% of its cells (rounded, at least 1) |
+| Clear lines | cleared cells × 7 × number of lines |
 | Combo (clears in a row) | +50% per combo level |
-| Whole board cleared | +300 🎉 |
+| Whole board cleared | +210 🎉 |
 
 The combo stays alive while you clear at least once every 3 pieces.
 

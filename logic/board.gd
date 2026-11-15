@@ -1,10 +1,10 @@
 class_name Board
 extends RefCounted
-## The 8x8 grid. Pure logic – no drawing here.
+## The 9x9 grid. Pure logic – no drawing here.
 ## Each cell holds EMPTY (-1) or a color index (0..7).
 ## Shapes are arrays of Vector2i(x = column, y = row) offsets.
 
-const SIZE := 8
+const SIZE := 9
 const EMPTY := -1
 
 var cells: Array[int] = []
