@@ -6,7 +6,7 @@
 #   GODOT=/path/to/Godot_v4.7.2-stable_linux.x86_64 tools/export_release.sh
 #
 # The first run creates the release keystore (outside the project).
-# The password is typed here and never written to any file.
+# The password is read from <keystore>.pass if present, else typed here.
 #
 # !!! BACK UP the keystore file AND its password in 3 places.
 # !!! Losing either means the game can never be updated on Google Play.
@@ -31,8 +31,15 @@ if [ ! -f "$KEYSTORE" ]; then
 	echo "== Keystore created. Back it up NOW (USB stick, cloud drive, email)."
 fi
 
-read -r -s -p "Keystore password: " PASS
-echo
+# Password: from "<keystore>.pass" next to the keystore if it exists
+# (outside the project, owner-only), otherwise typed at the prompt.
+PASS_FILE="${KEYSTORE%.keystore}.pass"
+if [ -f "$PASS_FILE" ]; then
+	PASS="$(cat "$PASS_FILE")"
+else
+	read -r -s -p "Keystore password: " PASS
+	echo
+fi
 
 mkdir -p build
 export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$KEYSTORE"
