@@ -31,6 +31,10 @@ Palette="*res://autoload/palette.gd"
 Lang="*res://autoload/lang.gd"
 Audio="*res://autoload/audio.gd"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/bloxo_android/plugin.cfg")
+
 [display]
 
 window/size/viewport_width=1080
