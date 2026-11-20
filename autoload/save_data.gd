@@ -60,12 +60,28 @@ func load_data() -> void:
 	saved_game = game if typeof(game) == TYPE_DICTIONARY else {}
 
 
+## Writes to a temporary file first and then swaps it in, so if the phone
+## kills the app halfway through a save the old save.json stays intact.
 func write() -> void:
-	var file := FileAccess.open(PATH, FileAccess.WRITE)
+	var tmp_path := PATH + ".tmp"
+	var file := FileAccess.open(tmp_path, FileAccess.WRITE)
 	if file == null:
 		push_warning("Could not save data: %s" % FileAccess.get_open_error())
 		return
-	file.store_string(JSON.stringify({
+	file.store_string(_to_json())
+	file.close()
+	var err := DirAccess.rename_absolute(tmp_path, PATH)
+	if err != OK:
+		# Rename not possible here: fall back to writing the file directly.
+		var direct := FileAccess.open(PATH, FileAccess.WRITE)
+		if direct == null:
+			push_warning("Could not save data: %s" % FileAccess.get_open_error())
+			return
+		direct.store_string(_to_json())
+
+
+func _to_json() -> String:
+	return JSON.stringify({
 		"best_score": best_score,
 		"sound_on": sound_on,
 		"music_on": music_on,
@@ -78,7 +94,7 @@ func write() -> void:
 		"last_daily_date": last_daily_date,
 		"last_hourly_time": last_hourly_time,
 		"saved_game": saved_game,
-	}))
+	})
 
 
 # --- power-ups & gifts ------------------------------------------------------
