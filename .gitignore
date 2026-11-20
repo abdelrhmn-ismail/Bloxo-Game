@@ -5,3 +5,5 @@
 export_credentials.cfg
 .codegpt-game.json
 /build/
+# Signing keys and passwords (back them up yourself, never commit)
+/secrets/

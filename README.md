@@ -26,6 +26,16 @@ godot --path . res://tests/click_theme_test.tscn       # needs a window: clicks 
 godot --headless --path . -s tests/balance_check.gd    # difficulty report (smart player), not pass/fail
 ```
 
+## 📦 Release build (Google Play)
+```
+tools/export_release.sh            # -> build/bloxo-release.aab (Play) + build/bloxo-release.apk (phone)
+tools/make_store_screenshots.sh    # -> store/screenshots/ (1080x1920, add "ar" for Arabic)
+```
+- Signing key + password live in `secrets/` (git-ignored, **back it up**).
+- Store texts, graphics and a step-by-step Play Console guide: `store/` (start with `store/PLAY_CONSOLE_GUIDE.md`).
+- Privacy policy page: `docs/privacy-policy.html` (publish it with GitHub Pages from `/docs`).
+- `build/` and `secrets/` are never committed.
+
 ## 🖼️ Regenerate the logo and icons
 ```
 python3 tools/make_logo.py     # needs Pillow
@@ -133,7 +143,11 @@ ui/         buttons, labels and pop-up panels
 effects/    block drawing, clear effect, floating text
 assets/     images, sounds, fonts
 tests/      rule tests + smoke test scene
-tools/      helper scripts (logo/icon renderer, starter sound generator)
+tools/      helper scripts (logo/icons, sounds, music, release build, store screenshots)
+store/      Google Play listing: texts, graphics, screenshots, Play Console guide
+docs/       privacy policy page (GitHub Pages)
+secrets/    release signing key + password (git-ignored)
+build/      exported AAB / APK (git-ignored)
 ```
 
 ## 📜 Credits

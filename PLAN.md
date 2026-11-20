@@ -20,8 +20,8 @@
 - [x] Phase 6 — Screens (splash, menu with Continue, pause, game over, auto-save/resume, safe area)
 - [ ] Phase 7 — Testing on a real phone
 - [ ] Phase 8 — Ads (optional)
-- [ ] Phase 9 — Android export (AAB)
-- [ ] Phase 10 — Google Play release
+- [x] Phase 9 — Android export (AAB) — `tools/export_release.sh`, key in `secrets/`
+- [ ] Phase 10 — Google Play release — listing, screenshots and guide ready in `store/`
 - [ ] Phase 11 — After launch
 
 ---

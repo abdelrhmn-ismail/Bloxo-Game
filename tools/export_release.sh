@@ -3,9 +3,10 @@
 #   build/bloxo-release.aab  -> upload to Google Play
 #   build/bloxo-release.apk  -> install on your own phone
 #
-#   GODOT=/path/to/Godot_v4.7.2-stable_linux.x86_64 tools/export_release.sh
+#   tools/export_release.sh
+#   (or GODOT=/path/to/Godot_v4.7.2-stable_linux.x86_64 tools/export_release.sh)
 #
-# The first run creates the release keystore (outside the project).
+# The first run creates the release keystore in secrets/ (git-ignored).
 # The password is read from <keystore>.pass if present, else typed here.
 #
 # !!! BACK UP the keystore file AND its password in 3 places.
@@ -14,9 +15,12 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-GODOT="${GODOT:-godot}"
+# Default: the Godot copy next to the games folder, else "godot" on PATH.
+DEFAULT_GODOT="../Games Tools/Godot_v4.7.2-stable_linux.x86_64"
+[ -x "$DEFAULT_GODOT" ] || DEFAULT_GODOT="godot"
+GODOT="${GODOT:-$DEFAULT_GODOT}"
 KEYTOOL="${KEYTOOL:-$HOME/tools/jdk17/bin/keytool}"
-KEYSTORE="${BLOXO_KEYSTORE:-$HOME/keystores/bloxo-release.keystore}"
+KEYSTORE="${BLOXO_KEYSTORE:-$PWD/secrets/bloxo-release.keystore}"
 ALIAS="bloxo"
 
 command -v "$GODOT" >/dev/null 2>&1 || [ -x "$GODOT" ] || { echo "Godot not found: set GODOT=/path/to/godot"; exit 1; }
@@ -32,7 +36,7 @@ if [ ! -f "$KEYSTORE" ]; then
 fi
 
 # Password: from "<keystore>.pass" next to the keystore if it exists
-# (outside the project, owner-only), otherwise typed at the prompt.
+# (in secrets/, git-ignored, owner-only), otherwise typed at the prompt.
 PASS_FILE="${KEYSTORE%.keystore}.pass"
 if [ -f "$PASS_FILE" ]; then
 	PASS="$(cat "$PASS_FILE")"
